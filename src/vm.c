@@ -4,15 +4,15 @@
 
  #include "defines/dict.sys.h"
 
-interpreter_vm *_interpreter_init(void) {
+type_Vm *_interpreter_init(void) {
     int i;
-    interpreter_vm *tp = (interpreter_vm*)calloc(sizeof(interpreter_vm),1);
+    type_Vm *tp = (type_Vm*)calloc(sizeof(type_Vm),1);
     tp->time_limit = interpreter_NO_LIMIT;
     tp->clocks = clock();
     tp->time_elapsed = 0.0;
     tp->mem_limit = interpreter_NO_LIMIT;
     tp->mem_exceeded = 0;
-    tp->mem_used = sizeof(interpreter_vm);
+    tp->mem_used = sizeof(type_Vm);
     tp->cur = 0;
     tp->jmp = 0;
     tp->ex = interpreter_None;
@@ -60,7 +60,7 @@ void interpreter_deinit(TP) {
     interpreter_full(tp); interpreter_full(tp);
     interpreter_delete(tp,tp->root);
     interpreter_gc_deinit(tp);
-    tp->mem_used -= sizeof(interpreter_vm);
+    tp->mem_used -= sizeof(type_Vm);
     free(tp);
 }
 
@@ -446,7 +446,7 @@ void interpreter_builtins(TP) {
     {0,0},
     };
     int i; for(i=0; b[i].s; i++) {
-        interpreter_set(tp,tp->builtins,interpreter_string(b[i].s),interpreter_fnc(tp,(interpreter_obj (*)(interpreter_vm *))b[i].f));
+        interpreter_set(tp,tp->builtins,interpreter_string(b[i].s),interpreter_fnc(tp,(interpreter_obj (*)(type_Vm *))b[i].f));
     }
 
     o = interpreter_object(tp);
@@ -499,8 +499,8 @@ interpreter_obj interpreter_eval(TP, const char *text, interpreter_obj globals) 
  * Returns:
  * The newly created interpreter instance.
  */
-interpreter_vm *interpreter_init(int argc, char *argv[]) {
-    interpreter_vm *tp = _interpreter_init();
+type_Vm *interpreter_init(int argc, char *argv[]) {
+    type_Vm *tp = _interpreter_init();
     interpreter_builtins(tp);
     interpreter_args(tp,argc,argv);
     interpreter_compiler(tp);

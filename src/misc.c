@@ -9,7 +9,7 @@ interpreter_obj _interpreter_tcall(TP,interpreter_obj fnc) {
     if (fnc.fnc.ftype&2) {
         _interpreter_list_insert(tp,tp->params.list.val,0,fnc.fnc.info->self);
     }
-    return _interpreter_dcall(tp,(interpreter_obj (*)(interpreter_vm *))fnc.fnc.cfnc);
+    return _interpreter_dcall(tp,(interpreter_obj (*)(type_Vm *))fnc.fnc.cfnc);
 }
 
 interpreter_obj interpreter_fnc_new(TP,int t, void *v, interpreter_obj c,interpreter_obj s, interpreter_obj g) {
