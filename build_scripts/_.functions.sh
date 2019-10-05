@@ -10,4 +10,10 @@ else
        printf "."
 fi
 }
+
+fn_dirEnsure () {
+if [ ! -d "$1" ]; then
+  mkdir -p $dirbuild
+fi
+}
 #end functions
