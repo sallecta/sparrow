@@ -6,7 +6,7 @@
 
 void os_init(type_vm *tp)
 {
-    interpreter_obj module,submodule;
+    type_vmObj module,submodule;
     module = interpreter_dict(tp);
     interpreter_set(tp,tp->modules,interpreter_string("os"),module);
 /*    interpreter_set(tp,module,interpreter_string("init"),interpreter_fnc(tp,_os_init));*/

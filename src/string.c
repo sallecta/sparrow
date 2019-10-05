@@ -7,9 +7,9 @@
  * Does not put it in for GC tracking, since contents should be
  * filled after returning.
  */ 
-interpreter_obj interpreter_string_t(type_vm *tp, int n) {
-    interpreter_obj r = interpreter_string_n(0,n);
-    r.string.info = (_interpreter_string*)calloc(sizeof(_interpreter_string)+n,1);/*calloc((x),1)*/
+type_vmObj interpreter_string_t(type_vm *tp, int n) {
+    type_vmObj r = interpreter_string_n(0,n);
+    r.string.info = (type_vmString*)calloc(sizeof(type_vmString)+n,1);/*calloc((x),1)*/
     r.string.info->len = n;
     r.string.val = r.string.info->s;
     return r;
@@ -19,8 +19,8 @@ interpreter_obj interpreter_string_t(type_vm *tp, int n) {
  * Create a new string which is a copy of some memory.
  * This is put into GC tracking for you.
  */
-interpreter_obj interpreter_string_copy(type_vm *tp, const char *s, int n) {
-    interpreter_obj r = interpreter_string_t(tp,n);
+type_vmObj interpreter_string_copy(type_vm *tp, const char *s, int n) {
+    type_vmObj r = interpreter_string_t(tp,n);
     memcpy(r.string.info->s,s,n);
     return interpreter_track(tp,r);
 }
@@ -30,18 +30,18 @@ interpreter_obj interpreter_string_copy(type_vm *tp, const char *s, int n) {
  * Does not need to be put into GC tracking, as its parent is
  * already being tracked (supposedly).
  */
-interpreter_obj interpreter_string_sub(type_vm *tp, interpreter_obj s, int a, int b) {
+type_vmObj interpreter_string_sub(type_vm *tp, type_vmObj s, int a, int b) {
     int l = s.string.len;
     a = _interpreter_max(0,(a<0?l+a:a)); b = _interpreter_min(l,(b<0?l+b:b));
-    interpreter_obj r = s;
+    type_vmObj r = s;
     r.string.val += a;
     r.string.len = b-a;
     return r;
 }
 
-interpreter_obj interpreter_printf(type_vm *tp, char const *fmt,...) {
+type_vmObj interpreter_printf(type_vm *tp, char const *fmt,...) {
     int l;
-    interpreter_obj r;
+    type_vmObj r;
     char *s;
     va_list arg;
     va_start(arg, fmt);
@@ -55,7 +55,7 @@ interpreter_obj interpreter_printf(type_vm *tp, char const *fmt,...) {
     return interpreter_track(tp,r);
 }
 
-int _interpreter_str_index(interpreter_obj s, interpreter_obj k) {
+int _interpreter_str_index(type_vmObj s, type_vmObj k) {
     int i=0;
     while ((s.string.len - i) >= k.string.len) {
         if (memcmp(s.string.val+i,k.string.val,k.string.len) == 0) {
@@ -66,11 +66,11 @@ int _interpreter_str_index(interpreter_obj s, interpreter_obj k) {
     return -1;
 }
 
-interpreter_obj interpreter_join(type_vm *tp) {
-    interpreter_obj delim = interpreter_OBJ();
-    interpreter_obj val = interpreter_OBJ();
+type_vmObj interpreter_join(type_vm *tp) {
+    type_vmObj delim = interpreter_OBJ();
+    type_vmObj val = interpreter_OBJ();
     int l=0,i;
-    interpreter_obj r;
+    type_vmObj r;
     char *s;
     for (i=0; i<val.list.val->len; i++) {
         if (i!=0) { l += delim.string.len; }
@@ -80,7 +80,7 @@ interpreter_obj interpreter_join(type_vm *tp) {
     s = r.string.info->s;
     l = 0;
     for (i=0; i<val.list.val->len; i++) {
-        interpreter_obj e;
+        type_vmObj e;
         if (i!=0) {
             memcpy(s+l,delim.string.val,delim.string.len); l += delim.string.len;
         }
@@ -90,10 +90,10 @@ interpreter_obj interpreter_join(type_vm *tp) {
     return interpreter_track(tp,r);
 }
 
-interpreter_obj interpreter_split(type_vm *tp) {
-    interpreter_obj v = interpreter_OBJ();
-    interpreter_obj d = interpreter_OBJ();
-    interpreter_obj r = interpreter_list(tp);
+type_vmObj interpreter_split(type_vm *tp) {
+    type_vmObj v = interpreter_OBJ();
+    type_vmObj d = interpreter_OBJ();
+    type_vmObj r = interpreter_list(tp);
 
     int i;
     while ((i=_interpreter_str_index(v,d))!=-1) {
@@ -105,42 +105,42 @@ interpreter_obj interpreter_split(type_vm *tp) {
 }
 
 
-interpreter_obj interpreter_find(type_vm *tp) {
-    interpreter_obj s = interpreter_OBJ();
-    interpreter_obj v = interpreter_OBJ();
+type_vmObj interpreter_find(type_vm *tp) {
+    type_vmObj s = interpreter_OBJ();
+    type_vmObj v = interpreter_OBJ();
     return interpreter_number(_interpreter_str_index(s,v));
 }
 
-interpreter_obj interpreter_str_index(type_vm *tp) {
-    interpreter_obj s = interpreter_OBJ();
-    interpreter_obj v = interpreter_OBJ();
+type_vmObj interpreter_str_index(type_vm *tp) {
+    type_vmObj s = interpreter_OBJ();
+    type_vmObj v = interpreter_OBJ();
     int n = _interpreter_str_index(s,v);
     if (n >= 0) { return interpreter_number(n); }
     interpreter_raise(interpreter_None,interpreter_string("(interpreter_str_index) ValueError: substring not found"));
 }
 
-interpreter_obj interpreter_str2(type_vm *tp) {
-    interpreter_obj v = interpreter_OBJ();
+type_vmObj interpreter_str2(type_vm *tp) {
+    type_vmObj v = interpreter_OBJ();
     return interpreter_str(tp,v);
 }
 
-interpreter_obj interpreter_chr(type_vm *tp) {
+type_vmObj interpreter_chr(type_vm *tp) {
     int v = type_vmNum();
     return interpreter_string_n(tp->chars[(unsigned char)v],1);
 }
-interpreter_obj interpreter_ord(type_vm *tp) {
-    interpreter_obj s = interpreter_STR();
+type_vmObj interpreter_ord(type_vm *tp) {
+    type_vmObj s = interpreter_STR();
     if (s.string.len != 1) {
         interpreter_raise(interpreter_None,interpreter_string("(interpreter_ord) TypeError: ord() expected a character"));
     }
     return interpreter_number((unsigned char)s.string.val[0]);
 }
 
-interpreter_obj interpreter_strip(type_vm *tp) {
-    interpreter_obj o = interpreter_TYPE(interpreter_STRING);
+type_vmObj interpreter_strip(type_vm *tp) {
+    type_vmObj o = interpreter_TYPE(interpreter_STRING);
     char const *v = o.string.val; int l = o.string.len;
     int i; int a = l, b = 0;
-    interpreter_obj r;
+    type_vmObj r;
     char *s;
     for (i=0; i<l; i++) {
         if (v[i] != ' ' && v[i] != '\n' && v[i] != '\t' && v[i] != '\r') {
@@ -154,18 +154,18 @@ interpreter_obj interpreter_strip(type_vm *tp) {
     return interpreter_track(tp,r);
 }
 
-interpreter_obj interpreter_replace(type_vm *tp) {
-    interpreter_obj s = interpreter_OBJ();
-    interpreter_obj k = interpreter_OBJ();
-    interpreter_obj v = interpreter_OBJ();
-    interpreter_obj p = s;
+type_vmObj interpreter_replace(type_vm *tp) {
+    type_vmObj s = interpreter_OBJ();
+    type_vmObj k = interpreter_OBJ();
+    type_vmObj v = interpreter_OBJ();
+    type_vmObj p = s;
     int i,n = 0;
     int c;
     int l;
-    interpreter_obj rr;
+    type_vmObj rr;
     char *r;
     char *d;
-    interpreter_obj z;
+    type_vmObj z;
     while ((i = _interpreter_str_index(p,k)) != -1) {
         n += 1;
         p.string.val += i + k.string.len; p.string.len -= i + k.string.len;

@@ -16,7 +16,7 @@
  * math library.
  */
 #define interpreter_MATH_FUNC1(cfunc)                        \
-    static interpreter_obj math_##cfunc(type_vm *tp) {                \
+    static type_vmObj math_##cfunc(type_vm *tp) {                \
         double x = type_vmNum();                        \
         double r = 0.0;                             \
                                                     \
@@ -38,7 +38,7 @@
  * math library.
  */
 #define interpreter_MATH_FUNC2(cfunc)                        \
-    static interpreter_obj math_##cfunc(type_vm *tp) {                \
+    static type_vmObj math_##cfunc(type_vm *tp) {                \
         double x = type_vmNum();                        \
         double y = type_vmNum();                        \
         double r = 0.0;                             \
@@ -57,12 +57,12 @@
 /*
  * PI definition: 3.1415926535897931
  */
-static interpreter_obj   math_pi;
+static type_vmObj   math_pi;
 
 /*
  * E definition: 2.7182818284590451
  */
-static interpreter_obj   math_e;
+static type_vmObj   math_e;
 
 /*
  * acos(x)
@@ -176,11 +176,11 @@ interpreter_MATH_FUNC2(fmod)
  * which is laid between 1/2 <= abs(r) < 1.
  * if x = 0, the (r, y) = (0, 0).
  */
-static interpreter_obj math_frexp(type_vm *tp) {
+static type_vmObj math_frexp(type_vm *tp) {
     double x = type_vmNum();
     int    y = 0;   
     double r = 0.0;
-    interpreter_obj rList = interpreter_list(tp);
+    type_vmObj rList = interpreter_list(tp);
 
     errno = 0;
     r = frexp(x, &y);
@@ -221,9 +221,9 @@ interpreter_MATH_FUNC2(ldexp)
  * the denominator and numerator. based on fomula:
  * log(x, base) = log10(x) / log10(base).
  */
-static interpreter_obj math_log(type_vm *tp) {
+static type_vmObj math_log(type_vm *tp) {
     double x = type_vmNum();
-    interpreter_obj b = interpreter_DEFAULT(interpreter_None);
+    type_vmObj b = interpreter_DEFAULT(interpreter_None);
     double y = 0.0;
     double den = 0.0;   /* denominator */
     double num = 0.0;   /* numinator */
@@ -269,11 +269,11 @@ interpreter_MATH_FUNC1(log10)
  * x and y is the fractional part of x, both holds
  * the same sign as x.
  */
-static interpreter_obj math_modf(type_vm *tp) {
+static type_vmObj math_modf(type_vm *tp) {
     double x = type_vmNum();
     double y = 0.0; 
     double r = 0.0;
-    interpreter_obj rList = interpreter_list(tp);
+    type_vmObj rList = interpreter_list(tp);
 
     errno = 0;
     r = modf(x, &y);
@@ -295,7 +295,7 @@ static interpreter_obj math_modf(type_vm *tp) {
  * of builtin function pow(); whilst, math_pow() is an
  * alternative in math module.
  */
-static interpreter_obj math_pow(type_vm *tp) {
+static type_vmObj math_pow(type_vm *tp) {
     double x = type_vmNum();
     double y = type_vmNum();
     double r = 0.0;

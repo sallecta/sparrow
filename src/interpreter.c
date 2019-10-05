@@ -11,13 +11,13 @@
 #include "gc.c"
 #include "ops.c"
 
-void interpreter_compiler(TP);
+void interpreter_compiler(type_vm *tp);
 #include "vm.c"
 
-interpreter_obj interpreter_None = {interpreter_NONE};
+type_vmObj interpreter_None = {interpreter_NONE};
 
 #include "bc.c"
-void interpreter_compiler(TP) {
+void interpreter_compiler(type_vm *tp) {
     interpreter_import(tp,0,"tokenize",interpreter_tokenize,sizeof(interpreter_tokenize));
     interpreter_import(tp,0,"parse",interpreter_parse,sizeof(interpreter_parse));
     interpreter_import(tp,0,"encode",interpreter_encode,sizeof(interpreter_encode));

@@ -4,45 +4,45 @@
 
  #include "defines/dict.sys.h"
 
-type_vm *_interpreter_init(void) {
+type_vm *sub_interpreterInit(void) {
     int i;
-    type_vm *vmObj = (type_vm*)calloc(sizeof(type_vm),1);
-    vmObj->time_limit = interpreter_NO_LIMIT;
-    vmObj->clocks = clock();
-    vmObj->time_elapsed = 0.0;
-    vmObj->mem_limit = interpreter_NO_LIMIT;
-    vmObj->mem_exceeded = 0;
-    vmObj->mem_used = sizeof(type_vm);
-    vmObj->cur = 0;
-    vmObj->jmp = 0;
-    vmObj->ex = interpreter_None;
-    vmObj->root = interpreter_list_nt(vmObj);
-    for (i=0; i<256; i++) { vmObj->chars[i][0]=i; }
-    interpreter_gc_init(vmObj);
-    vmObj->_regs = interpreter_list(vmObj);
-    for (i=0; i<interpreter_REGS; i++) { interpreter_set(vmObj,vmObj->_regs,interpreter_None,interpreter_None); }
-    vmObj->builtins = interpreter_dict(vmObj);
-    vmObj->modules = interpreter_dict(vmObj);
-    vmObj->_params = interpreter_list(vmObj);
-    for (i=0; i<interpreter_FRAMES; i++) { interpreter_set(vmObj,vmObj->_params,interpreter_None,interpreter_list(vmObj)); }
-    interpreter_set(vmObj,vmObj->root,interpreter_None,vmObj->builtins);
-    interpreter_set(vmObj,vmObj->root,interpreter_None,vmObj->modules);
-    interpreter_set(vmObj,vmObj->root,interpreter_None,vmObj->_regs);
-    interpreter_set(vmObj,vmObj->root,interpreter_None,vmObj->_params);
-    interpreter_set(vmObj,vmObj->builtins,interpreter_string("MODULES"),vmObj->modules);
-    interpreter_set(vmObj,vmObj->modules,interpreter_string("BUILTINS"),vmObj->builtins);
-    interpreter_set(vmObj,vmObj->builtins,interpreter_string("BUILTINS"),vmObj->builtins);
-    interpreter_obj sys = interpreter_dict(vmObj);
+    type_vm *vm = (type_vm*)calloc(sizeof(type_vm),1);
+    vm->time_limit = interpreter_NO_LIMIT;
+    vm->clocks = clock();
+    vm->time_elapsed = 0.0;
+    vm->mem_limit = interpreter_NO_LIMIT;
+    vm->mem_exceeded = 0;
+    vm->mem_used = sizeof(type_vm);
+    vm->cur = 0;
+    vm->jmp = 0;
+    vm->ex = interpreter_None;
+    vm->root = interpreter_list_nt(vm);
+    for (i=0; i<256; i++) { vm->chars[i][0]=i; }
+    interpreter_gc_init(vm);
+    vm->regs_sub = interpreter_list(vm);
+    for (i=0; i<vm_REGS; i++) { interpreter_set(vm,vm->regs_sub,interpreter_None,interpreter_None); }
+    vm->builtins = interpreter_dict(vm);
+    vm->modules = interpreter_dict(vm);
+    vm->params_sub = interpreter_list(vm);
+    for (i=0; i<vm_FRAMES; i++) { interpreter_set(vm,vm->params_sub,interpreter_None,interpreter_list(vm)); }
+    interpreter_set(vm,vm->root,interpreter_None,vm->builtins);
+    interpreter_set(vm,vm->root,interpreter_None,vm->modules);
+    interpreter_set(vm,vm->root,interpreter_None,vm->regs_sub);
+    interpreter_set(vm,vm->root,interpreter_None,vm->params_sub);
+    interpreter_set(vm,vm->builtins,interpreter_string("MODULES"),vm->modules);
+    interpreter_set(vm,vm->modules,interpreter_string("BUILTINS"),vm->builtins);
+    interpreter_set(vm,vm->builtins,interpreter_string("BUILTINS"),vm->builtins);
+    type_vmObj sys = interpreter_dict(vm);
     /*defines from interpreter/defines*/
-    /*interpreter_set(vmObj, sys, interpreter_string("version"), interpreter_string("interpreter 1.2+SVN"));*/
-    interpreter_set(vmObj, sys, interpreter_string("version"), interpreter_string(config_sys_version));
-    interpreter_set(vmObj, sys, interpreter_string("flags"), interpreter_string(config_sys_flags));
-    interpreter_set(vmObj, sys, interpreter_string("platform"), interpreter_string(config_sys_platform));
+    /*interpreter_set(vm, sys, interpreter_string("version"), interpreter_string("interpreter 1.2+SVN"));*/
+    interpreter_set(vm, sys, interpreter_string("version"), interpreter_string(config_sys_version));
+    interpreter_set(vm, sys, interpreter_string("flags"), interpreter_string(config_sys_flags));
+    interpreter_set(vm, sys, interpreter_string("platform"), interpreter_string(config_sys_platform));
     /*end defines from interpreter/defines*/
-    interpreter_set(vmObj,vmObj->modules, interpreter_string("sys"), sys);
-    vmObj->regs = vmObj->_regs.list.val->items;
-    interpreter_full(vmObj);
-    return vmObj;
+    interpreter_set(vm,vm->modules, interpreter_string("sys"), sys);
+    vm->regs = vm->regs_sub.list.val->items;
+    interpreter_full(vm);
+    return vm;
 }
 
 
@@ -64,19 +64,19 @@ void interpreter_deinit(type_vm *tp) {
     free(tp);
 }
 
-/* interpreter_frame_*/
-void interpreter_frame(type_vm *tp,interpreter_obj globals,interpreter_obj code,interpreter_obj *ret_dest) {
-    interpreter_frame_ f;
+/* type_vmFrame*/
+void interpreter_frame(type_vm *tp,type_vmObj globals,type_vmObj code,type_vmObj *ret_dest) {
+    type_vmFrame f;
     f.globals = globals;
     f.code = code;
-    f.cur = (interpreter_code*)f.code.string.val;
+    f.cur = (type_vmCode*)f.code.string.val;
     f.jmp = 0;
 /*     fprintf(stderr,"tp->cur: %d\n",tp->cur);*/
     f.regs = (tp->cur <= 0?tp->regs:tp->frames[tp->cur].regs+tp->frames[tp->cur].cregs);
 
     f.regs[0] = f.globals;
     f.regs[1] = f.code;
-    f.regs += interpreter_REGS_EXTRA;
+    f.regs += vm_REGS_EXTRA;
 
     f.ret_dest = ret_dest;
     f.lineno = 0;
@@ -85,14 +85,14 @@ void interpreter_frame(type_vm *tp,interpreter_obj globals,interpreter_obj code,
     f.fname = interpreter_string("?");
     f.cregs = 0;
 /*     return f;*/
-    if (f.regs+(256+interpreter_REGS_EXTRA) >= tp->regs+interpreter_REGS || tp->cur >= interpreter_FRAMES-1) {
+    if (f.regs+(256+vm_REGS_EXTRA) >= tp->regs+vm_REGS || tp->cur >= vm_FRAMES-1) {
         interpreter_raise(,interpreter_string("(interpreter_frame) RuntimeError: stack overflow"));
     }
     tp->cur += 1;
     tp->frames[tp->cur] = f;
 }
 
-void _interpreter_raise(type_vm *tp,interpreter_obj e) {
+void _interpreter_raise(type_vm *tp,type_vmObj e) {
     /*char *x = 0; x[0]=0;*/
     if (!tp || !tp->jmp) {
 #ifndef CPYTHON_MOD
@@ -157,14 +157,14 @@ void interpreter_handle(type_vm *tp) {
  * This will look for a global function named "foo", then call it with a single
  * positional parameter containing the string "hello".
  */
-interpreter_obj interpreter_call(type_vm *tp,interpreter_obj self, interpreter_obj params) {
+type_vmObj interpreter_call(type_vm *tp,type_vmObj self, type_vmObj params) {
     /* I'm not sure we should have to do this, but
     just for giggles we will. */
     tp->params = params;
 
     if (self.type == interpreter_DICT) {
         if (self.dict.dtype == 1) {
-            interpreter_obj meta; if (_interpreter_lookup(tp,self,interpreter_string("__new__"),&meta)) {
+            type_vmObj meta; if (_interpreter_lookup(tp,self,interpreter_string("__new__"),&meta)) {
                 _interpreter_list_insert(tp,params.list.val,0,self);
                 return interpreter_call(tp,meta,params);
             }
@@ -175,12 +175,12 @@ interpreter_obj interpreter_call(type_vm *tp,interpreter_obj self, interpreter_o
         }
     }
     if (self.type == interpreter_FNC && !(self.fnc.ftype&1)) {
-        interpreter_obj r = _interpreter_tcall(tp,self);
+        type_vmObj r = _interpreter_tcall(tp,self);
         interpreter_grey(tp,r);
         return r;
     }
     if (self.type == interpreter_FNC) {
-        interpreter_obj dest = interpreter_None;
+        type_vmObj dest = interpreter_None;
         interpreter_frame(tp,self.fnc.info->globals,self.fnc.info->code,&dest);
         if ((self.fnc.ftype&2)) {
             tp->frames[tp->cur].regs[0] = params;
@@ -196,12 +196,12 @@ interpreter_obj interpreter_call(type_vm *tp,interpreter_obj self, interpreter_o
 }
 
 
-void interpreter_return(type_vm *tp, interpreter_obj v) {
-    interpreter_obj *dest = tp->frames[tp->cur].ret_dest;
+void interpreter_return(type_vm *tp, type_vmObj v) {
+    type_vmObj *dest = tp->frames[tp->cur].ret_dest;
     if (dest) { *dest = v; interpreter_grey(tp,v); }
-/*     memset(tp->frames[tp->cur].regs,0,interpreter_REGS_PER_FRAME*sizeof(interpreter_obj));
+/*     memset(tp->frames[tp->cur].regs,0,interpreter_REGS_PER_FRAME*sizeof(type_vmObj));
        fprintf(stderr,"regs:%d\n",(tp->frames[tp->cur].cregs+1));*/
-    memset(tp->frames[tp->cur].regs-interpreter_REGS_EXTRA,0,(interpreter_REGS_EXTRA+tp->frames[tp->cur].cregs)*sizeof(interpreter_obj));
+    memset(tp->frames[tp->cur].regs-vm_REGS_EXTRA,0,(vm_REGS_EXTRA+tp->frames[tp->cur].cregs)*sizeof(type_vmObj));
     tp->cur -= 1;
 }
 
@@ -236,13 +236,13 @@ enum {
 
 
 int interpreter_step(type_vm *tp) {
-    interpreter_frame_ *f = &tp->frames[tp->cur];
-    interpreter_obj *regs = f->regs;
-    interpreter_code *cur = f->cur;
+    type_vmFrame *f = &tp->frames[tp->cur];
+    type_vmObj *regs = f->regs;
+    type_vmCode *cur = f->cur;
     while(1) {
-    interpreter_code e = *cur;
+    type_vmCode e = *cur;
     /*
-     fprintf(stderr,"%2d.%4d: %-6s %3d %3d %3d\n",tp->cur,cur - (interpreter_code*)f->code.string.val,interpreter_strings[e.i],VA,VB,VC);
+     fprintf(stderr,"%2d.%4d: %-6s %3d %3d %3d\n",tp->cur,cur - (type_vmCode*)f->code.string.val,interpreter_strings[e.i],VA,VB,VC);
        int i; for(i=0;i<16;i++) { fprintf(stderr,"%d: %s\n",i,interpreter_xSTR(regs[i])); }
     */
     switch (e.i) {
@@ -355,15 +355,15 @@ void interpreter_run(type_vm *tp,int cur) {
 }
 
 
-interpreter_obj interpreter_ez_call(type_vm *tp, const char *mod, const char *fnc, interpreter_obj params) {
-    interpreter_obj tmp;
+type_vmObj interpreter_ez_call(type_vm *tp, const char *mod, const char *fnc, type_vmObj params) {
+    type_vmObj tmp;
     tmp = interpreter_get(tp,tp->modules,interpreter_string(mod));
     tmp = interpreter_get(tp,tmp,interpreter_string(fnc));
     return interpreter_call(tp,tmp,params);
 }
 
-interpreter_obj _interpreter_import(type_vm *tp, interpreter_obj fname, interpreter_obj name, interpreter_obj code) {
-    interpreter_obj g;
+type_vmObj _interpreter_import(type_vm *tp, type_vmObj fname, type_vmObj name, type_vmObj code) {
+    type_vmObj g;
 
     if (!((fname.type != interpreter_NONE && _interpreter_str_index(fname,interpreter_string(".tpc"))!=-1) || code.type != interpreter_NONE)) {
         return interpreter_ez_call(tp,"obfuscatedDataType","import_fname",interpreter_params_v(tp,2,fname,name));
@@ -399,27 +399,27 @@ interpreter_obj _interpreter_import(type_vm *tp, interpreter_obj fname, interpre
  * Returns:
  * The module object.
  */
-interpreter_obj interpreter_import(type_vm *tp, const char * fname, const char * name, void *codes, int len) {
-    interpreter_obj f = fname?interpreter_string(fname):interpreter_None;
-    interpreter_obj bc = codes?interpreter_string_n((const char*)codes,len):interpreter_None;
+type_vmObj interpreter_import(type_vm *tp, const char * fname, const char * name, void *codes, int len) {
+    type_vmObj f = fname?interpreter_string(fname):interpreter_None;
+    type_vmObj bc = codes?interpreter_string_n((const char*)codes,len):interpreter_None;
     return _interpreter_import(tp,f,interpreter_string(name),bc);
 }
 
 
 
-interpreter_obj interpreter_exec_(type_vm *tp) {
-    interpreter_obj code = interpreter_OBJ();
-    interpreter_obj globals = interpreter_OBJ();
-    interpreter_obj r = interpreter_None;
+type_vmObj interpreter_exec_(type_vm *tp) {
+    type_vmObj code = interpreter_OBJ();
+    type_vmObj globals = interpreter_OBJ();
+    type_vmObj r = interpreter_None;
     interpreter_frame(tp,globals,code,&r);
     interpreter_run(tp,tp->cur);
     return r;
 }
 
 
-interpreter_obj interpreter_import_(type_vm *tp) {
-    interpreter_obj mod = interpreter_OBJ();
-    interpreter_obj r;
+type_vmObj interpreter_import_(type_vm *tp) {
+    type_vmObj mod = interpreter_OBJ();
+    type_vmObj r;
 
     if (interpreter_has(tp,tp->modules,mod).number.val) {
         return interpreter_get(tp,tp->modules,mod);
@@ -430,7 +430,7 @@ interpreter_obj interpreter_import_(type_vm *tp) {
 }
 
 void interpreter_builtins(type_vm *tp) {
-    interpreter_obj o;
+    type_vmObj o;
     struct {const char *s;void *f;} b[] = {
     {"print",interpreter_print}, {"range",interpreter_range}, {"min",interpreter_min},
     {"max",interpreter_max}, {"bind",interpreter_bind}, {"copy",interpreter_copy},
@@ -446,7 +446,7 @@ void interpreter_builtins(type_vm *tp) {
     {0,0},
     };
     int i; for(i=0; b[i].s; i++) {
-        interpreter_set(tp,tp->builtins,interpreter_string(b[i].s),interpreter_fnc(tp,(interpreter_obj (*)(type_vm *))b[i].f));
+        interpreter_set(tp,tp->builtins,interpreter_string(b[i].s),interpreter_fnc(tp,(type_vmObj (*)(type_vm *))b[i].f));
     }
 
     o = interpreter_object(tp);
@@ -457,13 +457,13 @@ void interpreter_builtins(type_vm *tp) {
 
 
 void interpreter_args(type_vm *tp,int argc, char *argv[]) {
-    interpreter_obj self = interpreter_list(tp);
+    type_vmObj self = interpreter_list(tp);
     int i;
     for (i=1; i<argc; i++) { _interpreter_list_append(tp,self.list.val,interpreter_string(argv[i])); }
     interpreter_set(tp,tp->builtins,interpreter_string("ARGV"),self);
 }
 
-interpreter_obj interpreter_main(type_vm *tp,char *fname, void *code, int len) {
+type_vmObj interpreter_main(type_vm *tp,char *fname, void *code, int len) {
     return interpreter_import(tp,fname,"__main__",code, len);
 }
 
@@ -471,22 +471,22 @@ interpreter_obj interpreter_main(type_vm *tp,char *fname, void *code, int len) {
  * Compile some interpreter code.
  *
  */
-interpreter_obj interpreter_compile(type_vm *tp, interpreter_obj text, interpreter_obj fname) {
+type_vmObj interpreter_compile(type_vm *tp, type_vmObj text, type_vmObj fname) {
     return interpreter_ez_call(tp,"BUILTINS","compile",interpreter_params_v(tp,2,text,fname));
 }
 
 /* Function: interpreter_exec
  * Execute VM code.
  */
-interpreter_obj interpreter_exec(type_vm *tp, interpreter_obj code, interpreter_obj globals) {
-    interpreter_obj r=interpreter_None;
+type_vmObj interpreter_exec(type_vm *tp, type_vmObj code, type_vmObj globals) {
+    type_vmObj r=interpreter_None;
     interpreter_frame(tp,globals,code,&r);
     interpreter_run(tp,tp->cur);
     return r;
 }
 
-interpreter_obj interpreter_eval(type_vm *tp, const char *text, interpreter_obj globals) {
-    interpreter_obj code = interpreter_compile(tp,interpreter_string(text),interpreter_string("<eval>"));
+type_vmObj interpreter_eval(type_vm *tp, const char *text, type_vmObj globals) {
+    type_vmObj code = interpreter_compile(tp,interpreter_string(text),interpreter_string("<eval>"));
     return interpreter_exec(tp,code,globals);
 }
 
@@ -500,11 +500,11 @@ interpreter_obj interpreter_eval(type_vm *tp, const char *text, interpreter_obj 
  * The newly created interpreter instance.
  */
 type_vm *interpreter_init(int argc, char *argv[]) {
-    type_vm *vmObj = _interpreter_init();
-    interpreter_builtins(vmObj);
-    interpreter_args(vmObj,argc,argv);
-    interpreter_compiler(vmObj);
-    return vmObj;
+    type_vm *vm = sub_interpreterInit();
+    interpreter_builtins(vm);
+    interpreter_args(vm,argc,argv);
+    interpreter_compiler(vm);
+    return vm;
 }
 
 /**/

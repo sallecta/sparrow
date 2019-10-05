@@ -47,22 +47,22 @@ typedef struct type_vmStructNum {
 } type_vmStructNum;
 typedef struct type_vmStructString {
     int type;
-    struct _interpreter_string *info;
+    struct type_vmString *info;
     char const *val;
     int len;
 } type_vmStructString;
 typedef struct type_vmStructList {
     int type;
-    struct _interpreter_list *val;
+    struct type_vmList *val;
 } type_vmStructList;
 typedef struct type_vmStructDict {
     int type;
-    struct _interpreter_dict *val;
+    struct type_vmDict *val;
     int dtype;
 } type_vmStructDict;
 typedef struct type_vmStructFnc {
     int type;
-    struct _interpreter_fnc *info;
+    struct type_vmFnc *info;
     int ftype;
     void *cfnc;
 } type_vmStructFnc;
@@ -73,7 +73,7 @@ typedef struct type_vmStructData {
     int magic;
 } type_vmStructData;
 
-/* Type: interpreter_obj
+/* Type: type_vmObj
  * interpreter's object representation.
  * 
  * Every object in interpreter is of this type in the C API.
@@ -95,7 +95,7 @@ typedef struct type_vmStructData {
  * data.val - The user-provided data pointer.
  * data.magic - The user-provided magic number for identifying the data type.
  */
-typedef union interpreter_obj {
+typedef union type_vmObj {
     int type;
     type_vmStructNum number;
     struct { int type; int *data; } gci;
@@ -104,70 +104,69 @@ typedef union interpreter_obj {
     type_vmStructList list;
     type_vmStructFnc fnc;
     type_vmStructData data;
-} interpreter_obj;
+} type_vmObj;
 
-typedef struct _interpreter_string {
+typedef struct type_vmString {
     int gci;
     int len;
     char s[1];
-} _interpreter_string;
-typedef struct _interpreter_list {
+} type_vmString;
+typedef struct type_vmList {
     int gci;
-    interpreter_obj *items;
+    type_vmObj *items;
     int len;
     int alloc;
-} _interpreter_list;
-typedef struct interpreter_item {
+} type_vmList;
+typedef struct type_vmItem {
     int used;
     int hash;
-    interpreter_obj key;
-    interpreter_obj val;
-} interpreter_item;
-typedef struct _interpreter_dict {
+    type_vmObj key;
+    type_vmObj val;
+} type_vmItem;
+typedef struct type_vmDict {
     int gci;
-    interpreter_item *items;
+    type_vmItem *items;
     int len;
     int alloc;
     int cur;
     int mask;
     int used;
-    interpreter_obj meta;
-} _interpreter_dict;
-typedef struct _interpreter_fnc {
+    type_vmObj meta;
+} type_vmDict;
+typedef struct type_vmFnc {
     int gci;
-    interpreter_obj self;
-    interpreter_obj globals;
-    interpreter_obj code;
-} _interpreter_fnc;
+    type_vmObj self;
+    type_vmObj globals;
+    type_vmObj code;
+} type_vmFnc;
 
 
-typedef union interpreter_code {
+typedef union type_vmCode {
     unsigned char i;
     struct { unsigned char i,a,b,c; } regs;
     struct { char val[4]; } string;
     struct { float val; } number;
-} interpreter_code;
+} type_vmCode;
 
-typedef struct interpreter_frame_ {
-/*    interpreter_code *codes; */
-    interpreter_obj code;
-    interpreter_code *cur;
-    interpreter_code *jmp;
-    interpreter_obj *regs;
-    interpreter_obj *ret_dest;
-    interpreter_obj fname;
-    interpreter_obj name;
-    interpreter_obj line;
-    interpreter_obj globals;
+typedef struct type_vmFrame {
+/*    type_vmCode *codes; */
+    type_vmObj code;
+    type_vmCode *cur;
+    type_vmCode *jmp;
+    type_vmObj *regs;
+    type_vmObj *ret_dest;
+    type_vmObj fname;
+    type_vmObj name;
+    type_vmObj line;
+    type_vmObj globals;
     int lineno;
     int cregs;
-} interpreter_frame_;
+} type_vmFrame;
 
-#define interpreter_GCMAX 4096
-#define interpreter_FRAMES 256
-#define interpreter_REGS_EXTRA 2
-/* #define interpreter_REGS_PER_FRAME 256*/
-#define interpreter_REGS 16384
+#define vm_GCMAX 4096
+#define vm_FRAMES 256
+#define vm_REGS_EXTRA 2
+#define vm_REGS 16384
 
 /* Type: type_vm
  * Representation of a interpreter virtual machine instance.
@@ -189,23 +188,23 @@ typedef struct interpreter_frame_ {
  * frames[n].globals - A dictionary of global sybmols in callframe n.
  */
 typedef struct type_vm {
-    interpreter_obj builtins;
-    interpreter_obj modules;
-    interpreter_frame_ frames[interpreter_FRAMES];
-    interpreter_obj _params;
-    interpreter_obj params;
-    interpreter_obj _regs;
-    interpreter_obj *regs;
-    interpreter_obj root;
+    type_vmObj builtins;
+    type_vmObj modules;
+    type_vmFrame frames[vm_FRAMES];
+    type_vmObj params_sub;
+    type_vmObj params;
+    type_vmObj regs_sub;
+    type_vmObj *regs;
+    type_vmObj root;
     jmp_buf buf;
     int jmp;
-    interpreter_obj ex;
+    type_vmObj ex;
     char chars[256][2];
     int cur;
     /* gc */
-    _interpreter_list *white;
-    _interpreter_list *grey;
-    _interpreter_list *black;
+    type_vmList *white;
+    type_vmList *grey;
+    type_vmList *black;
     int steps;
     /* sandbox */
     clock_t clocks;
@@ -216,17 +215,17 @@ typedef struct type_vm {
     int mem_exceeded;
 } type_vm;
 
-#define TP type_vm *tp
+/* #define TP type_vm *tp */
 
 typedef struct _interpreter_data {
     int gci;
-    void (*free)(type_vm *tp,interpreter_obj);
+    void (*free)(type_vm *tp,type_vmObj);
 } _interpreter_data;
 
 #define interpreter_True interpreter_number(1)
 #define interpreter_False interpreter_number(0)
 
-extern interpreter_obj interpreter_None;
+extern type_vmObj interpreter_None;
 
 /*#define interpreter_malloc(TP,x) calloc((x),1)*/
 /* #define interpreter_realloc(TP,x,y) realloc(x,y) */
@@ -237,20 +236,20 @@ void interpreter_time_update(type_vm *tp);
 void interpreter_mem_update(type_vm *tp);
 
 void interpreter_run(type_vm *tp,int cur);
-void interpreter_set(type_vm *tp,interpreter_obj,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_get(type_vm *tp,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_has(type_vm *tp,interpreter_obj self, interpreter_obj k);
-interpreter_obj interpreter_len(type_vm *tp,interpreter_obj);
-void interpreter_del(type_vm *tp,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_str(type_vm *tp,interpreter_obj);
-int interpreter_bool(type_vm *tp,interpreter_obj);
-int interpreter_cmp(type_vm *tp,interpreter_obj,interpreter_obj);
-void _interpreter_raise(type_vm *tp,interpreter_obj);
-interpreter_obj interpreter_printf(type_vm *tp,char const *fmt,...);
-interpreter_obj interpreter_track(type_vm *tp,interpreter_obj);
-void interpreter_grey(type_vm *tp,interpreter_obj);
-interpreter_obj interpreter_call(type_vm *tp, interpreter_obj fnc, interpreter_obj params);
-interpreter_obj interpreter_add(type_vm *tp,interpreter_obj a, interpreter_obj b) ;
+void interpreter_set(type_vm *tp,type_vmObj,type_vmObj,type_vmObj);
+type_vmObj interpreter_get(type_vm *tp,type_vmObj,type_vmObj);
+type_vmObj interpreter_has(type_vm *tp,type_vmObj self, type_vmObj k);
+type_vmObj interpreter_len(type_vm *tp,type_vmObj);
+void interpreter_del(type_vm *tp,type_vmObj,type_vmObj);
+type_vmObj interpreter_str(type_vm *tp,type_vmObj);
+int interpreter_bool(type_vm *tp,type_vmObj);
+int interpreter_cmp(type_vm *tp,type_vmObj,type_vmObj);
+void _interpreter_raise(type_vm *tp,type_vmObj);
+type_vmObj interpreter_printf(type_vm *tp,char const *fmt,...);
+type_vmObj interpreter_track(type_vm *tp,type_vmObj);
+void interpreter_grey(type_vm *tp,type_vmObj);
+type_vmObj interpreter_call(type_vm *tp, type_vmObj fnc, type_vmObj params);
+type_vmObj interpreter_add(type_vm *tp,type_vmObj a, type_vmObj b) ;
 
 /* __func__ __VA_ARGS__ __FILE__ __LINE__ */
 
@@ -283,8 +282,8 @@ interpreter_obj interpreter_add(type_vm *tp,interpreter_obj a, interpreter_obj b
  * use <interpreter_string_t> or <interpreter_string_slice> to create a string where interpreter
  * manages storage for you.
  */
-interpreter_inline static interpreter_obj interpreter_string(char const *v) {
-    interpreter_obj val;
+interpreter_inline static type_vmObj interpreter_string(char const *v) {
+    type_vmObj val;
     type_vmStructString s = {interpreter_STRING, 0, v, 0};
     s.len = strlen(v);
     val.string = s;
@@ -293,7 +292,7 @@ interpreter_inline static interpreter_obj interpreter_string(char const *v) {
 
 #define interpreter_CSTR_LEN 256
 
-interpreter_inline static void interpreter_cstr(type_vm *tp,interpreter_obj v, char *s, int l) {
+interpreter_inline static void interpreter_cstr(type_vm *tp,type_vmObj v, char *s, int l) {
     if (v.type != interpreter_STRING) { 
         interpreter_raise(,interpreter_string("(interpreter_cstr) TypeError: value not a string"));
     }
@@ -306,7 +305,7 @@ interpreter_inline static void interpreter_cstr(type_vm *tp,interpreter_obj v, c
 
 
 #define interpreter_OBJ() (interpreter_get(tp,tp->params,interpreter_None))
-interpreter_inline static interpreter_obj interpreter_type(type_vm *tp,int t,interpreter_obj v) {
+interpreter_inline static type_vmObj interpreter_type(type_vm *tp,int t,type_vmObj v) {
     if (v.type != t) { interpreter_raise(interpreter_None,interpreter_string("(interpreter_type) TypeError: unexpected type")); }
     return v;
 }
@@ -326,12 +325,12 @@ interpreter_inline static interpreter_obj interpreter_type(type_vm *tp,int t,int
  * If you have a function which takes a variable number of arguments, you can
  * iterate through all remaining arguments for example like this:
  *
- * > interpreter_obj *my_func(type_vm *tp)
+ * > type_vmObj *my_func(type_vm *tp)
  * > {
  * >     // We retrieve the first argument like normal.
- * >     interpreter_obj first = interpreter_OBJ();
+ * >     type_vmObj first = interpreter_OBJ();
  * >     // Then we iterate over the remaining arguments.
- * >     interpreter_obj arg;
+ * >     type_vmObj arg;
  * >     interpreter_LOOP(arg)
  * >         // do something with arg
  * >     interpreter_END
@@ -351,13 +350,13 @@ interpreter_inline static int _interpreter_sign(type_vmNum v) { return (v<0?-1:(
 /* Function: interpreter_number
  * Creates a new numeric object.
  */
-interpreter_inline static interpreter_obj interpreter_number(type_vmNum v) {
-    interpreter_obj val = {interpreter_NUMBER};
+interpreter_inline static type_vmObj interpreter_number(type_vmNum v) {
+    type_vmObj val = {interpreter_NUMBER};
     val.number.val = v;
     return val;
 }
 
-interpreter_inline static void interpreter_echo(type_vm *tp,interpreter_obj e) {
+interpreter_inline static void interpreter_echo(type_vm *tp,type_vmObj e) {
     e = interpreter_str(tp,e);
     fwrite(e.string.val,1,e.string.len,stdout);
 }
@@ -369,8 +368,8 @@ interpreter_inline static void interpreter_echo(type_vm *tp,interpreter_obj e) {
  * use for the string object. The *note* also applies for this function, as the
  * string reference and length are kept, but no actual substring is stored.
  */
-interpreter_inline static interpreter_obj interpreter_string_n(char const *v,int n) {
-    interpreter_obj val;
+interpreter_inline static type_vmObj interpreter_string_n(char const *v,int n) {
+    type_vmObj val;
     type_vmStructString s = {interpreter_STRING, 0,v,n};
     val.string = s;
     return val;

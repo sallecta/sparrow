@@ -1,4 +1,4 @@
-void interpreter_grey(type_vm *tp,interpreter_obj v) {
+void interpreter_grey(type_vm *tp,type_vmObj v) {
     if (v.type < interpreter_STRING || (!v.gci.data) || *v.gci.data) { return; }
     *v.gci.data = 1;
     if (v.type == interpreter_STRING || v.type == interpreter_DATA) {
@@ -8,7 +8,7 @@ void interpreter_grey(type_vm *tp,interpreter_obj v) {
     _interpreter_list_appendx(tp,tp->grey,v);
 }
 
-void interpreter_follow(type_vm *tp,interpreter_obj v) {
+void interpreter_follow(type_vm *tp,type_vmObj v) {
     int type = v.type;
     if (type == interpreter_LIST) {
         int n;
@@ -34,7 +34,7 @@ void interpreter_follow(type_vm *tp,interpreter_obj v) {
 
 void interpreter_reset(type_vm *tp) {
     int n;
-    _interpreter_list *tmp;
+    type_vmList *tmp;
     for (n=0; n<tp->black->len; n++) {
         *tp->black->items[n].gci.data = 0;
     }
@@ -56,7 +56,7 @@ void interpreter_gc_deinit(type_vm *tp) {
     _interpreter_list_free(tp, tp->black);
 }
 
-void interpreter_delete(type_vm *tp,interpreter_obj v) {
+void interpreter_delete(type_vm *tp,type_vmObj v) {
     int type = v.type;
     if (type == interpreter_LIST) {
         _interpreter_list_free(tp, v.list.val);
@@ -83,7 +83,7 @@ void interpreter_delete(type_vm *tp,interpreter_obj v) {
 void interpreter_collect(type_vm *tp) {
     int n;
     for (n=0; n<tp->white->len; n++) {
-        interpreter_obj r = tp->white->items[n];
+        type_vmObj r = tp->white->items[n];
         if (*r.gci.data) { continue; }
         interpreter_delete(tp,r);
     }
@@ -92,7 +92,7 @@ void interpreter_collect(type_vm *tp) {
 }
 
 void _interpreter_gcinc(type_vm *tp) {
-    interpreter_obj v;
+    type_vmObj v;
     if (!tp->grey->len) {
         return;
     }
@@ -111,16 +111,16 @@ void interpreter_full(type_vm *tp) {
 
 void interpreter_gcinc(type_vm *tp) {
     tp->steps += 1;
-    if (tp->steps < interpreter_GCMAX || tp->grey->len > 0) {
+    if (tp->steps < vm_GCMAX || tp->grey->len > 0) {
         _interpreter_gcinc(tp); _interpreter_gcinc(tp); 
     }
-    if (tp->steps < interpreter_GCMAX || tp->grey->len > 0) { return; }
+    if (tp->steps < vm_GCMAX || tp->grey->len > 0) { return; }
     tp->steps = 0;
     interpreter_full(tp);
     return;
 }
 
-interpreter_obj interpreter_track(type_vm *tp,interpreter_obj v) {
+type_vmObj interpreter_track(type_vm *tp,type_vmObj v) {
     interpreter_gcinc(tp);
     interpreter_grey(tp,v);
     return v;

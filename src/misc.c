@@ -2,19 +2,19 @@
  * Various functions to help interface interpreter.
  */
 
-interpreter_obj _interpreter_dcall(type_vm *tp,interpreter_obj fnc(TP)) {
+type_vmObj _interpreter_dcall(type_vm *tp,type_vmObj fnc(type_vm *tp)) {
     return fnc(tp);
 }
-interpreter_obj _interpreter_tcall(type_vm *tp,interpreter_obj fnc) {
+type_vmObj _interpreter_tcall(type_vm *tp,type_vmObj fnc) {
     if (fnc.fnc.ftype&2) {
         _interpreter_list_insert(tp,tp->params.list.val,0,fnc.fnc.info->self);
     }
-    return _interpreter_dcall(tp,(interpreter_obj (*)(type_vm *))fnc.fnc.cfnc);
+    return _interpreter_dcall(tp,(type_vmObj (*)(type_vm *))fnc.fnc.cfnc);
 }
 
-interpreter_obj interpreter_fnc_new(type_vm *tp,int t, void *v, interpreter_obj c,interpreter_obj s, interpreter_obj g) {
-    interpreter_obj r = {interpreter_FNC};
-    _interpreter_fnc *info = (_interpreter_fnc*)calloc(sizeof(_interpreter_fnc),1);/*calloc((x),1)*/
+type_vmObj interpreter_fnc_new(type_vm *tp,int t, void *v, type_vmObj c,type_vmObj s, type_vmObj g) {
+    type_vmObj r = {interpreter_FNC};
+    type_vmFnc *info = (type_vmFnc*)calloc(sizeof(type_vmFnc),1);/*calloc((x),1)*/
     info->code = c;
     info->self = s;
     info->globals = g;
@@ -24,8 +24,8 @@ interpreter_obj interpreter_fnc_new(type_vm *tp,int t, void *v, interpreter_obj 
     return interpreter_track(tp,r);
 }
 
-interpreter_obj interpreter_def(type_vm *tp,interpreter_obj code, interpreter_obj g) {
-    interpreter_obj r = interpreter_fnc_new(tp,1,0,code,interpreter_None,g);
+type_vmObj interpreter_def(type_vm *tp,type_vmObj code, type_vmObj g) {
+    type_vmObj r = interpreter_fnc_new(tp,1,0,code,interpreter_None,g);
     return r;
 }
 
@@ -35,11 +35,11 @@ interpreter_obj interpreter_def(type_vm *tp,interpreter_obj code, interpreter_ob
  * This is how you can create a interpreter function object which, when called in
  * the script, calls the provided C function.
  */
-interpreter_obj interpreter_fnc(type_vm *tp,interpreter_obj v(TP)) {
+type_vmObj interpreter_fnc(type_vm *tp,type_vmObj v(type_vm *tp)) {
     return interpreter_fnc_new(tp,0,v,interpreter_None,interpreter_None,interpreter_None);
 }
 
-interpreter_obj interpreter_method(type_vm *tp,interpreter_obj self,interpreter_obj v(TP)) {
+type_vmObj interpreter_method(type_vm *tp,type_vmObj self,type_vmObj v(type_vm *tp)) {
     return interpreter_fnc_new(tp,2,v,interpreter_None,self,interpreter_None);
 }
 
@@ -65,16 +65,16 @@ interpreter_obj interpreter_method(type_vm *tp,interpreter_obj self,interpreter_
  *              destroyed.
  * 
  * Example:
- * > void *__free__(type_vm *tp, interpreter_obj self)
+ * > void *__free__(type_vm *tp, type_vmObj self)
  * > {
  * >     free(self.data.val);
  * > }
  * >
- * > interpreter_obj my_obj = interpreter_data(type_vm *tp, 0, my_ptr);
+ * > type_vmObj my_obj = interpreter_data(type_vm *tp, 0, my_ptr);
  * > my_obj.data.info->free = __free__;
  */
-interpreter_obj interpreter_data(type_vm *tp,int magic,void *v) {
-    interpreter_obj r = {interpreter_DATA};
+type_vmObj interpreter_data(type_vm *tp,int magic,void *v) {
+    type_vmObj r = {interpreter_DATA};
     r.data.info = (_interpreter_data*)calloc(sizeof(_interpreter_data),1);/*calloc((x),1)*/
     r.data.val = v;
     r.data.magic = magic;
@@ -88,10 +88,10 @@ interpreter_obj interpreter_data(type_vm *tp,int magic,void *v) {
  * list of parameters getting passed to it. Usually, you may want to use
  * <interpreter_params_n> or <interpreter_params_v>.
  */
-interpreter_obj interpreter_params(type_vm *tp) {
-    interpreter_obj r;
-    tp->params = tp->_params.list.val->items[tp->cur];
-    r = tp->_params.list.val->items[tp->cur];
+type_vmObj interpreter_params(type_vm *tp) {
+    type_vmObj r;
+    tp->params = tp->params_sub.list.val->items[tp->cur];
+    r = tp->params_sub.list.val->items[tp->cur];
     r.list.val->len = 0;
     return r;
 }
@@ -108,8 +108,8 @@ interpreter_obj interpreter_params(type_vm *tp) {
  * Returns:
  * The parameters list. You may modify it before performing the function call.
  */
-interpreter_obj interpreter_params_n(type_vm *tp,int n, interpreter_obj argv[]) {
-    interpreter_obj r = interpreter_params(tp);
+type_vmObj interpreter_params_n(type_vm *tp,int n, type_vmObj argv[]) {
+    type_vmObj r = interpreter_params(tp);
     int i; for (i=0; i<n; i++) { _interpreter_list_append(tp,r.list.val,argv[i]); }
     return r;
 }
@@ -129,12 +129,12 @@ interpreter_obj interpreter_params_n(type_vm *tp,int n, interpreter_obj argv[]) 
  * A interpreter list object representing the current call parameters. You can modify
  * the list before doing the function call.
  */
-interpreter_obj interpreter_params_v(type_vm *tp,int n,...) {
+type_vmObj interpreter_params_v(type_vm *tp,int n,...) {
     int i;
-    interpreter_obj r = interpreter_params(tp);
+    type_vmObj r = interpreter_params(tp);
     va_list a; va_start(a,n);
     for (i=0; i<n; i++) {
-        _interpreter_list_append(tp,r.list.val,va_arg(a,interpreter_obj));
+        _interpreter_list_append(tp,r.list.val,va_arg(a,type_vmObj));
     }
     va_end(a);
     return r;

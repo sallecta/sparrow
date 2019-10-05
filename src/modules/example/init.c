@@ -8,7 +8,7 @@ void example_init(type_vm *tp)
     /*
      * new a module dict for example
      */
-    interpreter_obj example_mod = interpreter_dict(tp);
+    type_vmObj example_mod = interpreter_dict(tp);
 
     /*
      * bind example functions to example module

@@ -8,7 +8,7 @@ void math_init(type_vm *tp)
     /*
      * new a module dict for math
      */
-    interpreter_obj math_mod = interpreter_dict(tp);
+    type_vmObj math_mod = interpreter_dict(tp);
 
     /*
      * initialize pi and e
