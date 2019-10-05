@@ -3,7 +3,7 @@
 /*
  * init example module, namely, set its dictionary
  */
-void example_init(TP)
+void example_init(type_vm *tp)
 {
     /*
      * new a module dict for example

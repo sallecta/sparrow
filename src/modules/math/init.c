@@ -3,7 +3,7 @@
 /*
  * init math module, namely, set its dictionary
  */
-void math_init(TP)
+void math_init(type_vm *tp)
 {
     /*
      * new a module dict for math

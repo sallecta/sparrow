@@ -4,7 +4,7 @@
 /* os */
 
 
-void os_init(TP)
+void os_init(type_vm *tp)
 {
     interpreter_obj module,submodule;
     module = interpreter_dict(tp);

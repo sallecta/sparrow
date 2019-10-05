@@ -7,9 +7,9 @@
  * Does not put it in for GC tracking, since contents should be
  * filled after returning.
  */ 
-interpreter_obj interpreter_string_t(TP, int n) {
+interpreter_obj interpreter_string_t(type_vm *tp, int n) {
     interpreter_obj r = interpreter_string_n(0,n);
-    r.string.info = (_interpreter_string*)interpreter_malloc(tp, sizeof(_interpreter_string)+n);
+    r.string.info = (_interpreter_string*)calloc(sizeof(_interpreter_string)+n,1);/*calloc((x),1)*/
     r.string.info->len = n;
     r.string.val = r.string.info->s;
     return r;
@@ -19,7 +19,7 @@ interpreter_obj interpreter_string_t(TP, int n) {
  * Create a new string which is a copy of some memory.
  * This is put into GC tracking for you.
  */
-interpreter_obj interpreter_string_copy(TP, const char *s, int n) {
+interpreter_obj interpreter_string_copy(type_vm *tp, const char *s, int n) {
     interpreter_obj r = interpreter_string_t(tp,n);
     memcpy(r.string.info->s,s,n);
     return interpreter_track(tp,r);
@@ -30,7 +30,7 @@ interpreter_obj interpreter_string_copy(TP, const char *s, int n) {
  * Does not need to be put into GC tracking, as its parent is
  * already being tracked (supposedly).
  */
-interpreter_obj interpreter_string_sub(TP, interpreter_obj s, int a, int b) {
+interpreter_obj interpreter_string_sub(type_vm *tp, interpreter_obj s, int a, int b) {
     int l = s.string.len;
     a = _interpreter_max(0,(a<0?l+a:a)); b = _interpreter_min(l,(b<0?l+b:b));
     interpreter_obj r = s;
@@ -39,7 +39,7 @@ interpreter_obj interpreter_string_sub(TP, interpreter_obj s, int a, int b) {
     return r;
 }
 
-interpreter_obj interpreter_printf(TP, char const *fmt,...) {
+interpreter_obj interpreter_printf(type_vm *tp, char const *fmt,...) {
     int l;
     interpreter_obj r;
     char *s;
@@ -66,7 +66,7 @@ int _interpreter_str_index(interpreter_obj s, interpreter_obj k) {
     return -1;
 }
 
-interpreter_obj interpreter_join(TP) {
+interpreter_obj interpreter_join(type_vm *tp) {
     interpreter_obj delim = interpreter_OBJ();
     interpreter_obj val = interpreter_OBJ();
     int l=0,i;
@@ -90,7 +90,7 @@ interpreter_obj interpreter_join(TP) {
     return interpreter_track(tp,r);
 }
 
-interpreter_obj interpreter_split(TP) {
+interpreter_obj interpreter_split(type_vm *tp) {
     interpreter_obj v = interpreter_OBJ();
     interpreter_obj d = interpreter_OBJ();
     interpreter_obj r = interpreter_list(tp);
@@ -105,13 +105,13 @@ interpreter_obj interpreter_split(TP) {
 }
 
 
-interpreter_obj interpreter_find(TP) {
+interpreter_obj interpreter_find(type_vm *tp) {
     interpreter_obj s = interpreter_OBJ();
     interpreter_obj v = interpreter_OBJ();
     return interpreter_number(_interpreter_str_index(s,v));
 }
 
-interpreter_obj interpreter_str_index(TP) {
+interpreter_obj interpreter_str_index(type_vm *tp) {
     interpreter_obj s = interpreter_OBJ();
     interpreter_obj v = interpreter_OBJ();
     int n = _interpreter_str_index(s,v);
@@ -119,16 +119,16 @@ interpreter_obj interpreter_str_index(TP) {
     interpreter_raise(interpreter_None,interpreter_string("(interpreter_str_index) ValueError: substring not found"));
 }
 
-interpreter_obj interpreter_str2(TP) {
+interpreter_obj interpreter_str2(type_vm *tp) {
     interpreter_obj v = interpreter_OBJ();
     return interpreter_str(tp,v);
 }
 
-interpreter_obj interpreter_chr(TP) {
-    int v = interpreter_NUM();
+interpreter_obj interpreter_chr(type_vm *tp) {
+    int v = type_vmNum();
     return interpreter_string_n(tp->chars[(unsigned char)v],1);
 }
-interpreter_obj interpreter_ord(TP) {
+interpreter_obj interpreter_ord(type_vm *tp) {
     interpreter_obj s = interpreter_STR();
     if (s.string.len != 1) {
         interpreter_raise(interpreter_None,interpreter_string("(interpreter_ord) TypeError: ord() expected a character"));
@@ -136,7 +136,7 @@ interpreter_obj interpreter_ord(TP) {
     return interpreter_number((unsigned char)s.string.val[0]);
 }
 
-interpreter_obj interpreter_strip(TP) {
+interpreter_obj interpreter_strip(type_vm *tp) {
     interpreter_obj o = interpreter_TYPE(interpreter_STRING);
     char const *v = o.string.val; int l = o.string.len;
     int i; int a = l, b = 0;
@@ -154,7 +154,7 @@ interpreter_obj interpreter_strip(TP) {
     return interpreter_track(tp,r);
 }
 
-interpreter_obj interpreter_replace(TP) {
+interpreter_obj interpreter_replace(type_vm *tp) {
     interpreter_obj s = interpreter_OBJ();
     interpreter_obj k = interpreter_OBJ();
     interpreter_obj v = interpreter_OBJ();

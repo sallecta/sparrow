@@ -7,11 +7,11 @@
  *
  * Returns a string object representating self.
  */
-interpreter_obj interpreter_str(TP,interpreter_obj self) {
+interpreter_obj interpreter_str(type_vm *tp,interpreter_obj self) {
     int type = self.type;
     if (type == interpreter_STRING) { return self; }
     if (type == interpreter_NUMBER) {
-        interpreter_num v = self.number.val;
+        type_vmNum v = self.number.val;
         if ((fabs(v)-fabs((long)v)) < 0.000001) { return interpreter_printf(tp,"%ld",(long)v); }
         return interpreter_printf(tp,"%f",v);
     } else if(type == interpreter_DICT) {
@@ -35,7 +35,7 @@ interpreter_obj interpreter_str(TP,interpreter_obj self) {
  * type None or v is a string list or dictionary with a length of 0. Else true
  * is returned.
  */
-int interpreter_bool(TP,interpreter_obj v) {
+int interpreter_bool(type_vm *tp,interpreter_obj v) {
     switch(v.type) {
         case interpreter_NUMBER: return v.number.val != 0;
         case interpreter_NONE: return 0;
@@ -52,7 +52,7 @@ int interpreter_bool(TP,interpreter_obj v) {
  *
  * Returns interpreter_True if self[k] exists, interpreter_False otherwise.
  */
-interpreter_obj interpreter_has(TP,interpreter_obj self, interpreter_obj k) {
+interpreter_obj interpreter_has(type_vm *tp,interpreter_obj self, interpreter_obj k) {
     int type = self.type;
     if (type == interpreter_DICT) {
         if (_interpreter_dict_find(tp,self.dict.val,k) != -1) { return interpreter_True; }
@@ -72,7 +72,7 @@ interpreter_obj interpreter_has(TP,interpreter_obj self, interpreter_obj k) {
  *
  * Note that unlike with Python, you cannot use this to remove list items.
  */
-void interpreter_del(TP,interpreter_obj self, interpreter_obj k) {
+void interpreter_del(type_vm *tp,interpreter_obj self, interpreter_obj k) {
     int type = self.type;
     if (type == interpreter_DICT) {
         _interpreter_dict_del(tp,self.dict.val,k,"interpreter_del");
@@ -104,7 +104,7 @@ void interpreter_del(TP,interpreter_obj self, interpreter_obj k) {
  * Returns:
  * The first (k = 0) or next (k = 1 .. len(self)-1) item in the iteration.
  */
-interpreter_obj interpreter_iter(TP,interpreter_obj self, interpreter_obj k) {
+interpreter_obj interpreter_iter(type_vm *tp,interpreter_obj self, interpreter_obj k) {
     int type = self.type;
     if (type == interpreter_LIST || type == interpreter_STRING) { return interpreter_get(tp,self,k); }
     if (type == interpreter_DICT && k.type == interpreter_NUMBER) {
@@ -123,7 +123,7 @@ interpreter_obj interpreter_iter(TP,interpreter_obj self, interpreter_obj k) {
  * As a special case, if self is a list, self[None] will return the first
  * element in the list and subsequently remove it from the list.
  */
-interpreter_obj interpreter_get(TP,interpreter_obj self, interpreter_obj k) {
+interpreter_obj interpreter_get(type_vm *tp,interpreter_obj self, interpreter_obj k) {
     int type = self.type;
     interpreter_obj r;
     if (type == interpreter_DICT) {
@@ -209,7 +209,7 @@ interpreter_obj interpreter_get(TP,interpreter_obj self, interpreter_obj k) {
  * failed. Otherwise, it will return true, and the object will be returned
  * over the reference parameter r.
  */
-int interpreter_iget(TP,interpreter_obj *r, interpreter_obj self, interpreter_obj k) {
+int interpreter_iget(type_vm *tp,interpreter_obj *r, interpreter_obj self, interpreter_obj k) {
     if (self.type == interpreter_DICT) {
         int n = _interpreter_dict_find(tp,self.dict.val,k);
         if (n == -1) { return 0; }
@@ -228,7 +228,7 @@ int interpreter_iget(TP,interpreter_obj *r, interpreter_obj self, interpreter_ob
  * This is the counterpart of interpreter_get, it does the same as self[k] = v would do
  * in actual interpreter code.
  */
-void interpreter_set(TP,interpreter_obj self, interpreter_obj k, interpreter_obj v) {
+void interpreter_set(type_vm *tp,interpreter_obj self, interpreter_obj k, interpreter_obj v) {
     int type = self.type;
 
     if (type == interpreter_DICT) {
@@ -255,7 +255,7 @@ void interpreter_set(TP,interpreter_obj self, interpreter_obj k, interpreter_obj
     interpreter_raise(,interpreter_string("(interpreter_set) TypeError: object does not support item assignment"));
 }
 
-interpreter_obj interpreter_add(TP,interpreter_obj a, interpreter_obj b) {
+interpreter_obj interpreter_add(type_vm *tp,interpreter_obj a, interpreter_obj b) {
     if (a.type == interpreter_NUMBER && a.type == b.type) {
         return interpreter_number(a.number.val+b.number.val);
     } else if (a.type == interpreter_STRING && a.type == b.type) {
@@ -275,7 +275,7 @@ interpreter_obj interpreter_add(TP,interpreter_obj a, interpreter_obj b) {
     interpreter_raise(interpreter_None,interpreter_string("(interpreter_add) TypeError: ?"));
 }
 
-interpreter_obj interpreter_mul(TP,interpreter_obj a, interpreter_obj b) {
+interpreter_obj interpreter_mul(type_vm *tp,interpreter_obj a, interpreter_obj b) {
     if (a.type == interpreter_NUMBER && a.type == b.type) {
         return interpreter_number(a.number.val*b.number.val);
     } else if ((a.type == interpreter_STRING && b.type == interpreter_NUMBER) || 
@@ -301,7 +301,7 @@ interpreter_obj interpreter_mul(TP,interpreter_obj a, interpreter_obj b) {
  *
  * Returns the number of items in a list or dict, or the length of a string.
  */
-interpreter_obj interpreter_len(TP,interpreter_obj self) {
+interpreter_obj interpreter_len(type_vm *tp,interpreter_obj self) {
     int type = self.type;
     if (type == interpreter_STRING) {
         return interpreter_number(self.string.len);
@@ -314,7 +314,7 @@ interpreter_obj interpreter_len(TP,interpreter_obj self) {
     interpreter_raise(interpreter_None,interpreter_string("(interpreter_len) TypeError: len() of unsized object"));
 }
 
-int interpreter_cmp(TP,interpreter_obj a, interpreter_obj b) {
+int interpreter_cmp(type_vm *tp,interpreter_obj a, interpreter_obj b) {
     if (a.type != b.type) { return a.type-b.type; }
     switch(a.type) {
         case interpreter_NONE: return 0;
@@ -342,9 +342,9 @@ int interpreter_cmp(TP,interpreter_obj a, interpreter_obj b) {
 }
 
 #define interpreter_OP(name,expr) \
-    interpreter_obj name(TP,interpreter_obj _a,interpreter_obj _b) { \
+    interpreter_obj name(type_vm *tp,interpreter_obj _a,interpreter_obj _b) { \
     if (_a.type == interpreter_NUMBER && _a.type == _b.type) { \
-        interpreter_num a = _a.number.val; interpreter_num b = _b.number.val; \
+        type_vmNum a = _a.number.val; type_vmNum b = _b.number.val; \
         return interpreter_number(expr); \
     } \
     interpreter_raise(interpreter_None,interpreter_string("(" #name ") TypeError: unsupported operand type(s)")); \
@@ -360,7 +360,7 @@ interpreter_OP(interpreter_sub,a-b);
 interpreter_OP(interpreter_div,a/b);
 interpreter_OP(interpreter_pow,pow(a,b));
 
-interpreter_obj interpreter_bitwise_not(TP, interpreter_obj a) {
+interpreter_obj interpreter_bitwise_not(type_vm *tp, interpreter_obj a) {
     if (a.type == interpreter_NUMBER) {
         return interpreter_number(~(long)a.number.val);
     }

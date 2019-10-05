@@ -33,53 +33,45 @@
 #error "Unsuported compiler"
 #endif
 
-/*  #define interpreter_malloc(x) calloc((x),1)
-    #define interpreter_realloc(x,y) realloc(x,y)
-    #define interpreter_free(x) free(x) */
-
-/* #include <gc/gc.h>
-   #define interpreter_malloc(x) GC_MALLOC(x)
-   #define interpreter_realloc(x,y) GC_REALLOC(x,y)
-   #define interpreter_free(x)*/
 
 enum {
     interpreter_NONE,interpreter_NUMBER,interpreter_STRING,interpreter_DICT,
     interpreter_LIST,interpreter_FNC,interpreter_DATA,
 };
 
-typedef double interpreter_num;
+typedef double type_vmNum;
 
-typedef struct interpreter_number_ {
+typedef struct type_vmStructNum {
     int type;
-    interpreter_num val;
-} interpreter_number_;
-typedef struct interpreter_string_ {
+    type_vmNum val;
+} type_vmStructNum;
+typedef struct type_vmStructString {
     int type;
     struct _interpreter_string *info;
     char const *val;
     int len;
-} interpreter_string_;
-typedef struct interpreter_list_ {
+} type_vmStructString;
+typedef struct type_vmStructList {
     int type;
     struct _interpreter_list *val;
-} interpreter_list_;
-typedef struct interpreter_dict_ {
+} type_vmStructList;
+typedef struct type_vmStructDict {
     int type;
     struct _interpreter_dict *val;
     int dtype;
-} interpreter_dict_;
-typedef struct interpreter_fnc_ {
+} type_vmStructDict;
+typedef struct type_vmStructFnc {
     int type;
     struct _interpreter_fnc *info;
     int ftype;
     void *cfnc;
-} interpreter_fnc_;
-typedef struct interpreter_data_ {
+} type_vmStructFnc;
+typedef struct type_vmStructData {
     int type;
     struct _interpreter_data *info;
     void *val;
     int magic;
-} interpreter_data_;
+} type_vmStructData;
 
 /* Type: interpreter_obj
  * interpreter's object representation.
@@ -105,13 +97,13 @@ typedef struct interpreter_data_ {
  */
 typedef union interpreter_obj {
     int type;
-    interpreter_number_ number;
+    type_vmStructNum number;
     struct { int type; int *data; } gci;
-    interpreter_string_ string;
-    interpreter_dict_ dict;
-    interpreter_list_ list;
-    interpreter_fnc_ fnc;
-    interpreter_data_ data;
+    type_vmStructString string;
+    type_vmStructDict dict;
+    type_vmStructList list;
+    type_vmStructFnc fnc;
+    type_vmStructData data;
 } interpreter_obj;
 
 typedef struct _interpreter_string {
@@ -206,9 +198,6 @@ typedef struct type_vm {
     interpreter_obj *regs;
     interpreter_obj root;
     jmp_buf buf;
-#ifdef CPYTHON_MOD
-    jmp_buf nextexpr;
-#endif
     int jmp;
     interpreter_obj ex;
     char chars[256][2];
@@ -228,9 +217,10 @@ typedef struct type_vm {
 } type_vm;
 
 #define TP type_vm *tp
+
 typedef struct _interpreter_data {
     int gci;
-    void (*free)(TP,interpreter_obj);
+    void (*free)(type_vm *tp,interpreter_obj);
 } _interpreter_data;
 
 #define interpreter_True interpreter_number(1)
@@ -238,29 +228,29 @@ typedef struct _interpreter_data {
 
 extern interpreter_obj interpreter_None;
 
-#define interpreter_malloc(TP,x) calloc((x),1)
-#define interpreter_realloc(TP,x,y) realloc(x,y)
-#define interpreter_free(TP,x) free(x)
+/*#define interpreter_malloc(TP,x) calloc((x),1)*/
+/* #define interpreter_realloc(TP,x,y) realloc(x,y) */
+/* #define interpreter_free(TP,x) free(x) */
 
-void interpreter_sandbox(TP, double, unsigned long);
-void interpreter_time_update(TP);
-void interpreter_mem_update(TP);
+void interpreter_sandbox(type_vm *tp, double, unsigned long);
+void interpreter_time_update(type_vm *tp);
+void interpreter_mem_update(type_vm *tp);
 
-void interpreter_run(TP,int cur);
-void interpreter_set(TP,interpreter_obj,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_get(TP,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_has(TP,interpreter_obj self, interpreter_obj k);
-interpreter_obj interpreter_len(TP,interpreter_obj);
-void interpreter_del(TP,interpreter_obj,interpreter_obj);
-interpreter_obj interpreter_str(TP,interpreter_obj);
-int interpreter_bool(TP,interpreter_obj);
-int interpreter_cmp(TP,interpreter_obj,interpreter_obj);
-void _interpreter_raise(TP,interpreter_obj);
-interpreter_obj interpreter_printf(TP,char const *fmt,...);
-interpreter_obj interpreter_track(TP,interpreter_obj);
-void interpreter_grey(TP,interpreter_obj);
-interpreter_obj interpreter_call(TP, interpreter_obj fnc, interpreter_obj params);
-interpreter_obj interpreter_add(TP,interpreter_obj a, interpreter_obj b) ;
+void interpreter_run(type_vm *tp,int cur);
+void interpreter_set(type_vm *tp,interpreter_obj,interpreter_obj,interpreter_obj);
+interpreter_obj interpreter_get(type_vm *tp,interpreter_obj,interpreter_obj);
+interpreter_obj interpreter_has(type_vm *tp,interpreter_obj self, interpreter_obj k);
+interpreter_obj interpreter_len(type_vm *tp,interpreter_obj);
+void interpreter_del(type_vm *tp,interpreter_obj,interpreter_obj);
+interpreter_obj interpreter_str(type_vm *tp,interpreter_obj);
+int interpreter_bool(type_vm *tp,interpreter_obj);
+int interpreter_cmp(type_vm *tp,interpreter_obj,interpreter_obj);
+void _interpreter_raise(type_vm *tp,interpreter_obj);
+interpreter_obj interpreter_printf(type_vm *tp,char const *fmt,...);
+interpreter_obj interpreter_track(type_vm *tp,interpreter_obj);
+void interpreter_grey(type_vm *tp,interpreter_obj);
+interpreter_obj interpreter_call(type_vm *tp, interpreter_obj fnc, interpreter_obj params);
+interpreter_obj interpreter_add(type_vm *tp,interpreter_obj a, interpreter_obj b) ;
 
 /* __func__ __VA_ARGS__ __FILE__ __LINE__ */
 
@@ -295,7 +285,7 @@ interpreter_obj interpreter_add(TP,interpreter_obj a, interpreter_obj b) ;
  */
 interpreter_inline static interpreter_obj interpreter_string(char const *v) {
     interpreter_obj val;
-    interpreter_string_ s = {interpreter_STRING, 0, v, 0};
+    type_vmStructString s = {interpreter_STRING, 0, v, 0};
     s.len = strlen(v);
     val.string = s;
     return val;
@@ -303,7 +293,7 @@ interpreter_inline static interpreter_obj interpreter_string(char const *v) {
 
 #define interpreter_CSTR_LEN 256
 
-interpreter_inline static void interpreter_cstr(TP,interpreter_obj v, char *s, int l) {
+interpreter_inline static void interpreter_cstr(type_vm *tp,interpreter_obj v, char *s, int l) {
     if (v.type != interpreter_STRING) { 
         interpreter_raise(,interpreter_string("(interpreter_cstr) TypeError: value not a string"));
     }
@@ -316,7 +306,7 @@ interpreter_inline static void interpreter_cstr(TP,interpreter_obj v, char *s, i
 
 
 #define interpreter_OBJ() (interpreter_get(tp,tp->params,interpreter_None))
-interpreter_inline static interpreter_obj interpreter_type(TP,int t,interpreter_obj v) {
+interpreter_inline static interpreter_obj interpreter_type(type_vm *tp,int t,interpreter_obj v) {
     if (v.type != t) { interpreter_raise(interpreter_None,interpreter_string("(interpreter_type) TypeError: unexpected type")); }
     return v;
 }
@@ -325,7 +315,7 @@ interpreter_inline static interpreter_obj interpreter_type(TP,int t,interpreter_
 
 #define interpreter_NO_LIMIT 0
 #define interpreter_TYPE(t) interpreter_type(tp,t,interpreter_OBJ())
-#define interpreter_NUM() (interpreter_TYPE(interpreter_NUMBER).number.val)
+#define type_vmNum() (interpreter_TYPE(interpreter_NUMBER).number.val)
 /* #define interpreter_STR() (interpreter_CSTR(interpreter_TYPE(interpreter_STRING))) */
 #define interpreter_STR() (interpreter_TYPE(interpreter_STRING))
 #define interpreter_DEFAULT(d) (tp->params.list.val->len?interpreter_get(tp,tp->params,interpreter_None):(d))
@@ -356,18 +346,18 @@ interpreter_inline static interpreter_obj interpreter_type(TP,int t,interpreter_
 
 interpreter_inline static int _interpreter_min(int a, int b) { return (a<b?a:b); }
 interpreter_inline static int _interpreter_max(int a, int b) { return (a>b?a:b); }
-interpreter_inline static int _interpreter_sign(interpreter_num v) { return (v<0?-1:(v>0?1:0)); }
+interpreter_inline static int _interpreter_sign(type_vmNum v) { return (v<0?-1:(v>0?1:0)); }
 
 /* Function: interpreter_number
  * Creates a new numeric object.
  */
-interpreter_inline static interpreter_obj interpreter_number(interpreter_num v) {
+interpreter_inline static interpreter_obj interpreter_number(type_vmNum v) {
     interpreter_obj val = {interpreter_NUMBER};
     val.number.val = v;
     return val;
 }
 
-interpreter_inline static void interpreter_echo(TP,interpreter_obj e) {
+interpreter_inline static void interpreter_echo(type_vm *tp,interpreter_obj e) {
     e = interpreter_str(tp,e);
     fwrite(e.string.val,1,e.string.len,stdout);
 }
@@ -381,7 +371,7 @@ interpreter_inline static void interpreter_echo(TP,interpreter_obj e) {
  */
 interpreter_inline static interpreter_obj interpreter_string_n(char const *v,int n) {
     interpreter_obj val;
-    interpreter_string_ s = {interpreter_STRING, 0,v,n};
+    type_vmStructString s = {interpreter_STRING, 0,v,n};
     val.string = s;
     return val;
 }
