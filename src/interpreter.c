@@ -16,7 +16,6 @@ void interpreter_compiler(TP);
 
 interpreter_obj interpreter_None = {interpreter_NONE};
 
-#if interpreter_COMPILER
 #include "bc.c"
 void interpreter_compiler(TP) {
     interpreter_import(tp,0,"tokenize",interpreter_tokenize,sizeof(interpreter_tokenize));
@@ -25,8 +24,5 @@ void interpreter_compiler(TP) {
     interpreter_import(tp,0,"obfuscatedDataType",interpreter_obfuscatedArray,sizeof(interpreter_obfuscatedArray));
     interpreter_ez_call(tp,"obfuscatedDataType","_init",interpreter_None);
 }
-#else
-void interpreter_compiler(TP) { }
-#endif
 
 /**/
