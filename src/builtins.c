@@ -145,8 +145,8 @@ interpreter_obj interpreter_load(TP) {
     }
     r = interpreter_string_t(tp,l);
     s = r.string.info->s;
-    fread(s,1,l,f);
-/*    if (rr !=l) { printf("hmmn: %d %d\n",rr,(int)l); }*/
+    /*fread(s,1,l,f);*/
+    if (fread(s,1,l,f)==0) { printf("fread is 0"); }
     fclose(f);
     return interpreter_track(tp,r);
 }
