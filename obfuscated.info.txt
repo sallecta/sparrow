@@ -1,0 +1,8 @@
+bc.c
+unsigned char interpreter_obfuscatedArray[] = 
+116 105 110 121 112 121
+tinypy
+
+interpreter
+105,110,116,101,114,112 //interp
+105 110 116 101 114 112 114 101 116 101 114
