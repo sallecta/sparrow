@@ -240,9 +240,6 @@ int interpreter_step(TP) {
     interpreter_obj *regs = f->regs;
     interpreter_code *cur = f->cur;
     while(1) {
-    #ifdef interpreter_SANDBOX
-    interpreter_bounds(tp,cur,1);
-    #endif
     interpreter_code e = *cur;
     /*
      fprintf(stderr,"%2d.%4d: %-6s %3d %3d %3d\n",tp->cur,cur - (interpreter_code*)f->code.string.val,interpreter_strings[e.i],VA,VB,VC);
@@ -276,9 +273,6 @@ int interpreter_step(TP) {
             if (RC.number.val < interpreter_len(tp,RB).number.val) {
                 RA = interpreter_iter(tp,RB,RC); GA;
                 RC.number.val += 1;
-                #ifdef interpreter_SANDBOX
-                interpreter_bounds(tp,cur,1);
-                #endif
                 cur += 1;
             }
             break;
@@ -288,16 +282,10 @@ int interpreter_step(TP) {
         case interpreter_IDEL: interpreter_del(tp,RA,RB); break;
         case interpreter_IMOVE: RA = RB; break;
         case interpreter_INUMBER:
-            #ifdef interpreter_SANDBOX
-            interpreter_bounds(tp,cur,sizeof(interpreter_num)/4);
-            #endif
             RA = interpreter_number(*(interpreter_num*)(*++cur).string.val);
             cur += sizeof(interpreter_num)/4;
             continue;
         case interpreter_ISTRING: {
-            #ifdef interpreter_SANDBOX
-            interpreter_bounds(tp,cur,(UVBC/4)+1);
-            #endif
             /* RA = interpreter_string_n((*(cur+1)).string.val,UVBC); */
             int a = (*(cur+1)).string.val-f->code.string.val;
             RA = interpreter_string_sub(tp,f->code,a,a+UVBC),
@@ -311,9 +299,6 @@ int interpreter_step(TP) {
         case interpreter_IJUMP: cur += SVBC; continue; break;
         case interpreter_ISETJMP: f->jmp = SVBC?cur+SVBC:0; break;
         case interpreter_ICALL:
-            #ifdef interpreter_SANDBOX
-            interpreter_bounds(tp,cur,1);
-            #endif
             f->cur = cur + 1;  RA = interpreter_call(tp,RB,RC); GA;
             return 0; break;
         case interpreter_IGGET:
@@ -323,10 +308,6 @@ int interpreter_step(TP) {
             break;
         case interpreter_IGSET: interpreter_set(tp,f->globals,RA,RB); break;
         case interpreter_IDEF: {
-/*            RA = interpreter_def(tp,(*(cur+1)).string.val,f->globals);*/
-            #ifdef interpreter_SANDBOX
-            interpreter_bounds(tp,cur,SVBC);
-            #endif
             int a = (*(cur+1)).string.val-f->code.string.val;
             RA = interpreter_def(tp,
                 /*interpreter_string_n((*(cur+1)).string.val,(SVBC-1)*4),*/
@@ -343,14 +324,9 @@ int interpreter_step(TP) {
             break;
         case interpreter_INONE: RA = interpreter_None; break;
         case interpreter_ILINE:
-            #ifdef interpreter_SANDBOX
-            interpreter_bounds(tp,cur,VA);
-            #endif
             ;
             int a = (*(cur+1)).string.val-f->code.string.val;
-/*            f->line = interpreter_string_n((*(cur+1)).string.val,VA*4-1);*/
             f->line = interpreter_string_sub(tp,f->code,a,a+VA*4-1);
-/*             fprintf(stderr,"%7d: %s\n",UVBC,f->line.string.val);*/
             cur += VA; f->lineno = UVBC;
             break;
         case interpreter_IFILE: f->fname = RA; break;

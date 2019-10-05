@@ -10,9 +10,6 @@
 #include "builtins.c"
 #include "gc.c"
 #include "ops.c"
-#ifdef interpreter_SANDBOX
-#include "sandbox.c"
-#endif
 
 void interpreter_compiler(TP);
 #include "vm.c"

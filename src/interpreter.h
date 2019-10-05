@@ -238,15 +238,9 @@ typedef struct _interpreter_data {
 
 extern interpreter_obj interpreter_None;
 
-#ifdef interpreter_SANDBOX
-void *interpreter_malloc(TP, unsigned long);
-void *interpreter_realloc(TP, void *, unsigned long);
-void interpreter_free(TP, void *);
-#else
 #define interpreter_malloc(TP,x) calloc((x),1)
 #define interpreter_realloc(TP,x,y) realloc(x,y)
 #define interpreter_free(TP,x) free(x)
-#endif
 
 void interpreter_sandbox(TP, double, unsigned long);
 void interpreter_time_update(TP);
