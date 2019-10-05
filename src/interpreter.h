@@ -177,10 +177,10 @@ typedef struct interpreter_frame_ {
 /* #define interpreter_REGS_PER_FRAME 256*/
 #define interpreter_REGS 16384
 
-/* Type: type_Vm
+/* Type: type_vm
  * Representation of a interpreter virtual machine instance.
  * 
- * A new type_Vm struct is created with <interpreter_init>, and will be passed to most
+ * A new type_vm struct is created with <interpreter_init>, and will be passed to most
  * interpreter functions as first parameter. It contains all the data associated
  * with an instance of a interpreter virtual machine - so it is easy to have
  * multiple instances running at the same time. When you want to free up all
@@ -196,7 +196,7 @@ typedef struct interpreter_frame_ {
  * cur - The index of the currently executing call frame.
  * frames[n].globals - A dictionary of global sybmols in callframe n.
  */
-typedef struct type_Vm {
+typedef struct type_vm {
     interpreter_obj builtins;
     interpreter_obj modules;
     interpreter_frame_ frames[interpreter_FRAMES];
@@ -225,9 +225,9 @@ typedef struct type_Vm {
     unsigned long mem_limit;
     unsigned long mem_used;
     int mem_exceeded;
-} type_Vm;
+} type_vm;
 
-#define TP type_Vm *tp
+#define TP type_vm *tp
 typedef struct _interpreter_data {
     int gci;
     void (*free)(TP,interpreter_obj);
@@ -336,7 +336,7 @@ interpreter_inline static interpreter_obj interpreter_type(TP,int t,interpreter_
  * If you have a function which takes a variable number of arguments, you can
  * iterate through all remaining arguments for example like this:
  *
- * > interpreter_obj *my_func(type_Vm *tp)
+ * > interpreter_obj *my_func(type_vm *tp)
  * > {
  * >     // We retrieve the first argument like normal.
  * >     interpreter_obj first = interpreter_OBJ();
