@@ -17,17 +17,17 @@
  */
 #define interpreter_MATH_FUNC1(cfunc)                        \
     static type_vmObj math_##cfunc(type_vm *tp) {                \
-        double x = type_vmNum();                        \
+        double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;                        \
         double r = 0.0;                             \
                                                     \
         errno = 0;                                  \
         r = cfunc(x);                               \
         if (errno == EDOM || errno == ERANGE) {     \
-            interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x): x=%f "		\
+            vm_raise(0, vm_string_printf(tp, "%s(x): x=%f "		\
                                         "out of range", __func__, x));	\
         }                                           \
                                                     \
-        return (interpreter_number(r));                      \
+        return (vm_create_numericObj(r));                      \
     }
 
 /*
@@ -39,18 +39,18 @@
  */
 #define interpreter_MATH_FUNC2(cfunc)                        \
     static type_vmObj math_##cfunc(type_vm *tp) {                \
-        double x = type_vmNum();                        \
-        double y = type_vmNum();                        \
+        double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;                        \
+        double y = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;                        \
         double r = 0.0;                             \
                                                     \
         errno = 0;                                  \
         r = cfunc(x, y);                            \
         if (errno == EDOM || errno == ERANGE) {     \
-            interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x, y): x=%f,y=%f "	\
+            vm_raise(0, vm_string_printf(tp, "%s(x, y): x=%f,y=%f "	\
                                         "out of range", __func__, x, y)); \
         }                                           \
                                                     \
-        return (interpreter_number(r));                      \
+        return (vm_create_numericObj(r));                      \
     }
 
 
@@ -177,20 +177,20 @@ interpreter_MATH_FUNC2(fmod)
  * if x = 0, the (r, y) = (0, 0).
  */
 static type_vmObj math_frexp(type_vm *tp) {
-    double x = type_vmNum();
+    double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;
     int    y = 0;   
     double r = 0.0;
-    type_vmObj rList = interpreter_list(tp);
+    type_vmObj rList = vm_list(tp);
 
     errno = 0;
     r = frexp(x, &y);
     if (errno == EDOM || errno == ERANGE) {
-        interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x): x=%f, "
+        vm_raise(0, vm_string_printf(tp, "%s(x): x=%f, "
                                     "out of range", __func__, x));
     }
 
-    _interpreter_list_append(tp, rList.list.val, interpreter_number(r));
-    _interpreter_list_append(tp, rList.list.val, interpreter_number((type_vmNum)y));
+    vm_list_append(tp, rList.list.val, vm_create_numericObj(r));
+    vm_list_append(tp, rList.list.val, vm_create_numericObj((type_vmNum)y));
     return (rList);
 }
 
@@ -222,19 +222,19 @@ interpreter_MATH_FUNC2(ldexp)
  * log(x, base) = log10(x) / log10(base).
  */
 static type_vmObj math_log(type_vm *tp) {
-    double x = type_vmNum();
-    type_vmObj b = interpreter_DEFAULT(interpreter_None);
+    double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;
+    type_vmObj b = vm_macros_DEFAULT(vm_none);
     double y = 0.0;
     double den = 0.0;   /* denominator */
     double num = 0.0;   /* numinator */
     double r = 0.0;     /* result */
 
-    if (b.type == interpreter_NONE)
+    if (b.type == vm_enum1_none)
         y = M_E;
-    else if (b.type == interpreter_NUMBER)
+    else if (b.type == vm_enum1_number)
         y = (double)b.number.val;
     else
-        interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x, [base]): base invalid", __func__));
+        vm_raise(0, vm_string_printf(tp, "%s(x, [base]): base invalid", __func__));
 
     errno = 0;
     num = log10(x);
@@ -248,11 +248,12 @@ static type_vmObj math_log(type_vm *tp) {
 
     r = num / den;
 
-    return (interpreter_number(r));
+    return (vm_create_numericObj(r));
 
 excep:
-    interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x, y): x=%f,y=%f "
+    vm_raise(0, vm_string_printf(tp, "%s(x, y): x=%f,y=%f "
                                 "out of range", __func__, x, y));
+   return vm_none;
 }
 
 /*
@@ -270,20 +271,20 @@ interpreter_MATH_FUNC1(log10)
  * the same sign as x.
  */
 static type_vmObj math_modf(type_vm *tp) {
-    double x = type_vmNum();
+    double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;
     double y = 0.0; 
     double r = 0.0;
-    type_vmObj rList = interpreter_list(tp);
+    type_vmObj rList = vm_list(tp);
 
     errno = 0;
     r = modf(x, &y);
     if (errno == EDOM || errno == ERANGE) {
-        interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x): x=%f, "
+        vm_raise(0, vm_string_printf(tp, "%s(x): x=%f, "
                                     "out of range", __func__, x));
     }
 
-    _interpreter_list_append(tp, rList.list.val, interpreter_number(r));
-    _interpreter_list_append(tp, rList.list.val, interpreter_number(y));
+    vm_list_append(tp, rList.list.val, vm_create_numericObj(r));
+    vm_list_append(tp, rList.list.val, vm_create_numericObj(y));
     return (rList);
 }
 
@@ -291,23 +292,23 @@ static type_vmObj math_modf(type_vm *tp) {
  * pow(x, y)
  *
  * return value of x raised to y. equivalence of x ** y.
- * NOTE: conventionally, interpreter_pow() is the implementation
+ * NOTE: conventionally, vm_operations_pow() is the implementation
  * of builtin function pow(); whilst, math_pow() is an
  * alternative in math module.
  */
 static type_vmObj math_pow(type_vm *tp) {
-    double x = type_vmNum();
-    double y = type_vmNum();
+    double x = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;
+    double y = vm_typecheck(tp,vm_enum1_number,vm_operations_get(tp,tp->params,vm_none)).number.val;
     double r = 0.0;
 
     errno = 0;
     r = pow(x, y);
     if (errno == EDOM || errno == ERANGE) {
-        interpreter_raise(interpreter_None, interpreter_printf(tp, "%s(x, y): x=%f,y=%f "
+        vm_raise(0, vm_string_printf(tp, "%s(x, y): x=%f,y=%f "
                                     "out of range", __func__, x, y));
     }
 
-    return (interpreter_number(r));
+    return (vm_create_numericObj(r));
 }
 
 

@@ -1,5 +1,5 @@
 /* File: General
- * Things defined in interpreter.h.
+ * Things defined in vm.h.
  */
 #ifndef interpreter_H
 #define interpreter_H
@@ -17,26 +17,28 @@
 #include <time.h>
 
 #ifdef __GNUC__
-#define interpreter_inline __inline__
+#define vm_inline __inline__
 #endif
 
-#ifdef _MSC_VER
-#ifdef NDEBUG
-#define interpreter_inline __inline
-#else
-/* don't inline in debug builds (for easier debugging) */
-#define interpreter_inline
-#endif
-#endif
 
-#ifndef interpreter_inline
+
+#ifndef vm_inline
 #error "Unsuported compiler"
 #endif
 
 
 enum {
-    interpreter_NONE,interpreter_NUMBER,interpreter_STRING,interpreter_DICT,
-    interpreter_LIST,interpreter_FNC,interpreter_DATA,
+    vm_enum1_none,vm_enum1_number,vm_enum1_string,vm_enum1_dict,
+    vm_enum1_list,vm_enum1_fnc,vm_enum1_data,
+};
+enum {
+    vm_enum2_EOF,vm_enum2_ADD,vm_enum2_SUB,vm_enum2_MUL,vm_enum2_DIV,vm_enum2_POW,vm_enum2_BITAND,vm_enum2_BITOR,vm_enum2_CMP,vm_enum2_GET,vm_enum2_SET,
+    vm_enum2_NUMBER,vm_enum2_STRING,vm_enum2_GGET,vm_enum2_GSET,vm_enum2_MOVE,vm_enum2_DEF,vm_enum2_PASS,vm_enum2_JUMP,vm_enum2_CALL,
+    vm_enum2_RETURN,vm_enum2_IF,vm_enum2_DEBUG,vm_enum2_EQ,vm_enum2_LE,vm_enum2_LT,vm_enum2_DICT,vm_enum2_LIST,vm_enum2_NONE,vm_enum2_LEN,
+    vm_enum2_LINE,vm_enum2_PARAMS,vm_enum2_IGET,vm_enum2_FILE,vm_enum2_NAME,vm_enum2_NE,vm_enum2_HAS,vm_enum2_RAISE,vm_enum2_SETJMP,
+    vm_enum2_MOD,vm_enum2_LSH,vm_enum2_RSH,vm_enum2_ITER,vm_enum2_DEL,vm_enum2_REGS,vm_enum2_BITXOR, vm_enum2_IFN,
+    vm_enum2_NOT, vm_enum2_BITNOT,
+    vm_enum2_TOTAL
 };
 
 typedef double type_vmNum;
@@ -68,7 +70,7 @@ typedef struct type_vmStructFnc {
 } type_vmStructFnc;
 typedef struct type_vmStructData {
     int type;
-    struct _interpreter_data *info;
+    struct vm_type_data *info;
     void *val;
     int magic;
 } type_vmStructData;
@@ -79,19 +81,19 @@ typedef struct type_vmStructData {
  * Every object in interpreter is of this type in the C API.
  *
  * Fields:
- * type - This determines what kind of objects it is. It is either interpreter_NONE, in
+ * type - This determines what kind of objects it is. It is either vm_enum1_none, in
  *        which case this is the none type and no other fields can be accessed.
  *        Or it has one of the values listed below, and the corresponding
  *        fields can be accessed.
- * number - interpreter_NUMBER
+ * number - vm_enum1_number
  * number.val - A double value with the numeric value.
- * string - interpreter_STRING
+ * string - vm_enum1_string
  * string.val - A pointer to the string data.
  * string.len - Length in bytes of the string data.
- * dict - interpreter_DICT
- * list - interpreter_LIST
- * fnc - interpreter_FNC
- * data - interpreter_DATA
+ * dict - vm_enum1_dict
+ * list - vm_enum1_list
+ * fnc - vm_enum1_fnc
+ * data - vm_enum1_data
  * data.val - The user-provided data pointer.
  * data.magic - The user-provided magic number for identifying the data type.
  */
@@ -163,19 +165,19 @@ typedef struct type_vmFrame {
     int cregs;
 } type_vmFrame;
 
-#define vm_GCMAX 4096
-#define vm_FRAMES 256
-#define vm_REGS_EXTRA 2
-#define vm_REGS 16384
+#define vm_def_GCMAX 4096
+#define vm_def_FRAMES 256
+#define vm_def_REGS_EXTRA 2
+#define vm_def_REGS 16384
 
 /* Type: type_vm
  * Representation of a interpreter virtual machine instance.
  * 
- * A new type_vm struct is created with <interpreter_init>, and will be passed to most
+ * A new type_vm struct is created with <vm_init>, and will be passed to most
  * interpreter functions as first parameter. It contains all the data associated
  * with an instance of a interpreter virtual machine - so it is easy to have
  * multiple instances running at the same time. When you want to free up all
- * memory used by an instance, call <interpreter_deinit>.
+ * memory used by an instance, call <vm_deinit>.
  * 
  * Fields:
  * These fields are currently documented: 
@@ -190,7 +192,7 @@ typedef struct type_vmFrame {
 typedef struct type_vm {
     type_vmObj builtins;
     type_vmObj modules;
-    type_vmFrame frames[vm_FRAMES];
+    type_vmFrame frames[vm_def_FRAMES];
     type_vmObj params_sub;
     type_vmObj params;
     type_vmObj regs_sub;
@@ -217,60 +219,38 @@ typedef struct type_vm {
 
 /* #define TP type_vm *tp */
 
-typedef struct _interpreter_data {
+typedef struct vm_type_data {
     int gci;
     void (*free)(type_vm *tp,type_vmObj);
-} _interpreter_data;
+} vm_type_data;
 
-#define interpreter_True interpreter_number(1)
-#define interpreter_False interpreter_number(0)
 
-extern type_vmObj interpreter_None;
+extern type_vmObj vm_none;
 
-/*#define interpreter_malloc(TP,x) calloc((x),1)*/
-/* #define interpreter_realloc(TP,x,y) realloc(x,y) */
-/* #define interpreter_free(TP,x) free(x) */
+void vm_sandbox(type_vm *tp, double, unsigned long);
+void vm_time_update(type_vm *tp);
+void vm_mem_update(type_vm *tp);
 
-void interpreter_sandbox(type_vm *tp, double, unsigned long);
-void interpreter_time_update(type_vm *tp);
-void interpreter_mem_update(type_vm *tp);
-
-void interpreter_run(type_vm *tp,int cur);
-void interpreter_set(type_vm *tp,type_vmObj,type_vmObj,type_vmObj);
-type_vmObj interpreter_get(type_vm *tp,type_vmObj,type_vmObj);
-type_vmObj interpreter_has(type_vm *tp,type_vmObj self, type_vmObj k);
-type_vmObj interpreter_len(type_vm *tp,type_vmObj);
-void interpreter_del(type_vm *tp,type_vmObj,type_vmObj);
-type_vmObj interpreter_str(type_vm *tp,type_vmObj);
-int interpreter_bool(type_vm *tp,type_vmObj);
-int interpreter_cmp(type_vm *tp,type_vmObj,type_vmObj);
-void _interpreter_raise(type_vm *tp,type_vmObj);
-type_vmObj interpreter_printf(type_vm *tp,char const *fmt,...);
-type_vmObj interpreter_track(type_vm *tp,type_vmObj);
-void interpreter_grey(type_vm *tp,type_vmObj);
-type_vmObj interpreter_call(type_vm *tp, type_vmObj fnc, type_vmObj params);
-type_vmObj interpreter_add(type_vm *tp,type_vmObj a, type_vmObj b) ;
+void vm_run(type_vm *tp,int cur);
+void vm_operations_set(type_vm *tp,type_vmObj,type_vmObj,type_vmObj);
+type_vmObj vm_operations_get(type_vm *tp,type_vmObj,type_vmObj);
+type_vmObj vm_operations_haskey(type_vm *tp,type_vmObj self, type_vmObj k);
+type_vmObj vm_operations_len(type_vm *tp,type_vmObj);
+void vm_operations_dict_key_del(type_vm *tp,type_vmObj,type_vmObj);
+type_vmObj vm_operations_str(type_vm *tp,type_vmObj);
+int vm_operations_bool(type_vm *tp,type_vmObj);
+int vm_operations_cmp(type_vm *tp,type_vmObj,type_vmObj);
+void vm_raise(type_vm *tp,type_vmObj);
+type_vmObj vm_string_printf(type_vm *tp,char const *fmt,...);
+type_vmObj vm_gc_track(type_vm *tp,type_vmObj);
+void vm_gc_grey(type_vm *tp,type_vmObj);
+type_vmObj vm_call_sub(type_vm *tp, type_vmObj fnc, type_vmObj params);
+type_vmObj vm_operations_add(type_vm *tp,type_vmObj a, type_vmObj b) ;
 
 /* __func__ __VA_ARGS__ __FILE__ __LINE__ */
 
-/* Function: interpreter_raise
- * Macro to raise an exception.
- * 
- * This macro will return from the current function returning "r". The
- * remaining parameters are used to format the exception message.
- */
-/*
-#define interpreter_raise(r,fmt,...) { \
-    _interpreter_raise(tp,interpreter_printf(tp,fmt,__VA_ARGS__)); \
-    return r; \
-}
-*/
-#define interpreter_raise(r,v) { \
-    _interpreter_raise(tp,v); \
-    return r; \
-}
 
-/* Function: interpreter_string
+/* Function: vm_string
  * Creates a new string object from a C string.
  * 
  * Given a pointer to a C string, creates a interpreter object representing the
@@ -279,45 +259,42 @@ type_vmObj interpreter_add(type_vm *tp,type_vmObj a, type_vmObj b) ;
  * *Note* Only a reference to the string will be kept by interpreter, so make sure
  * it does not go out of scope, and don't de-allocate it. Also be aware that
  * interpreter will not delete the string for you. In many cases, it is best to
- * use <interpreter_string_t> or <interpreter_string_slice> to create a string where interpreter
+ * use <vm_string_new> or <interpreter_string_slice> to create a string where interpreter
  * manages storage for you.
  */
-interpreter_inline static type_vmObj interpreter_string(char const *v) {
+vm_inline static type_vmObj vm_string(char const *v) {
     type_vmObj val;
-    type_vmStructString s = {interpreter_STRING, 0, v, 0};
+    type_vmStructString s = {vm_enum1_string, 0, v, 0};
     s.len = strlen(v);
     val.string = s;
     return val;
 }
 
-#define interpreter_CSTR_LEN 256
+#define vm_def_CSTR_LEN 256
 
-interpreter_inline static void interpreter_cstr(type_vm *tp,type_vmObj v, char *s, int l) {
-    if (v.type != interpreter_STRING) { 
-        interpreter_raise(,interpreter_string("(interpreter_cstr) TypeError: value not a string"));
+vm_inline static void interpreter_cstr(type_vm *tp,type_vmObj v, char *s, int l) {
+    if (v.type != vm_enum1_string) { 
+        vm_raise(tp,vm_string("(interpreter_cstr) TypeError: value not a string"));
     }
     if (v.string.len >= l) {
-        interpreter_raise(,interpreter_string("(interpreter_cstr) TypeError: value too long"));
+        vm_raise(tp,vm_string("(interpreter_cstr) TypeError: value too long"));
     }
     memset(s,0,l);
     memcpy(s,v.string.val,v.string.len);
 }
 
 
-#define interpreter_OBJ() (interpreter_get(tp,tp->params,interpreter_None))
-interpreter_inline static type_vmObj interpreter_type(type_vm *tp,int t,type_vmObj v) {
-    if (v.type != t) { interpreter_raise(interpreter_None,interpreter_string("(interpreter_type) TypeError: unexpected type")); }
+vm_inline static type_vmObj vm_typecheck(type_vm *tp,int t,type_vmObj v) {
+    if (v.type != t) { vm_raise(tp,vm_string("(vm_typecheck) TypeError: unexpected type")); }
     return v;
 }
 
 
 
-#define interpreter_NO_LIMIT 0
-#define interpreter_TYPE(t) interpreter_type(tp,t,interpreter_OBJ())
-#define type_vmNum() (interpreter_TYPE(interpreter_NUMBER).number.val)
-/* #define interpreter_STR() (interpreter_CSTR(interpreter_TYPE(interpreter_STRING))) */
-#define interpreter_STR() (interpreter_TYPE(interpreter_STRING))
-#define interpreter_DEFAULT(d) (tp->params.list.val->len?interpreter_get(tp,tp->params,interpreter_None):(d))
+#define vm_def_NO_LIMIT 0
+
+
+#define vm_macros_DEFAULT(d) (tp->params.list.val->len?vm_operations_get(tp,tp->params,vm_none):(d))
 
 /* Macro: interpreter_LOOP
  * Macro to iterate over all remaining arguments.
@@ -328,7 +305,7 @@ interpreter_inline static type_vmObj interpreter_type(type_vm *tp,int t,type_vmO
  * > type_vmObj *my_func(type_vm *tp)
  * > {
  * >     // We retrieve the first argument like normal.
- * >     type_vmObj first = interpreter_OBJ();
+ * >     type_vmObj first = vm_operations_get(tp,tp->params,vm_none);
  * >     // Then we iterate over the remaining arguments.
  * >     type_vmObj arg;
  * >     interpreter_LOOP(arg)
@@ -339,38 +316,38 @@ interpreter_inline static type_vmObj interpreter_type(type_vm *tp,int t,type_vmO
 #define interpreter_LOOP(e) \
     int __l = tp->params.list.val->len; \
     int __i; for (__i=0; __i<__l; __i++) { \
-    (e) = _interpreter_list_get(tp,tp->params.list.val,__i,"interpreter_LOOP");
+    (e) = vm_list_get(tp,tp->params.list.val,__i,"interpreter_LOOP");
 #define interpreter_END \
     }
 
-interpreter_inline static int _interpreter_min(int a, int b) { return (a<b?a:b); }
-interpreter_inline static int _interpreter_max(int a, int b) { return (a>b?a:b); }
-interpreter_inline static int _interpreter_sign(type_vmNum v) { return (v<0?-1:(v>0?1:0)); }
+vm_inline static int vm_min(int a, int b) { return (a<b?a:b); }
+vm_inline static int vm_max(int a, int b) { return (a>b?a:b); }
+vm_inline static int vm_sign(type_vmNum v) { return (v<0?-1:(v>0?1:0)); }
 
-/* Function: interpreter_number
+/* Function: vm_create_numericObj
  * Creates a new numeric object.
  */
-interpreter_inline static type_vmObj interpreter_number(type_vmNum v) {
-    type_vmObj val = {interpreter_NUMBER};
+vm_inline static type_vmObj vm_create_numericObj(type_vmNum v) {
+    type_vmObj val = {vm_enum1_number};
     val.number.val = v;
     return val;
 }
 
-interpreter_inline static void interpreter_echo(type_vm *tp,type_vmObj e) {
-    e = interpreter_str(tp,e);
+vm_inline static void vm_echo(type_vm *tp,type_vmObj e) {
+    e = vm_operations_str(tp,e);
     fwrite(e.string.val,1,e.string.len,stdout);
 }
 
-/* Function: interpreter_string_n
+/* Function: vm_string_n
  * Creates a new string object from a partial C string.
  * 
- * Like <interpreter_string>, but you specify how many bytes of the given C string to
+ * Like <vm_string>, but you specify how many bytes of the given C string to
  * use for the string object. The *note* also applies for this function, as the
  * string reference and length are kept, but no actual substring is stored.
  */
-interpreter_inline static type_vmObj interpreter_string_n(char const *v,int n) {
+vm_inline static type_vmObj vm_string_n(char const *v,int n) {
     type_vmObj val;
-    type_vmStructString s = {interpreter_STRING, 0,v,n};
+    type_vmStructString s = {vm_enum1_string, 0,v,n};
     val.string = s;
     return val;
 }

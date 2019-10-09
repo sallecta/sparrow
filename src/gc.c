@@ -1,38 +1,38 @@
-void interpreter_grey(type_vm *tp,type_vmObj v) {
-    if (v.type < interpreter_STRING || (!v.gci.data) || *v.gci.data) { return; }
+void vm_gc_grey(type_vm *tp,type_vmObj v) {
+    if (v.type < vm_enum1_string || (!v.gci.data) || *v.gci.data) { return; }
     *v.gci.data = 1;
-    if (v.type == interpreter_STRING || v.type == interpreter_DATA) {
-        _interpreter_list_appendx(tp,tp->black,v);
+    if (v.type == vm_enum1_string || v.type == vm_enum1_data) {
+        vm_list_appendx(tp,tp->black,v);
         return;
     }
-    _interpreter_list_appendx(tp,tp->grey,v);
+    vm_list_appendx(tp,tp->grey,v);
 }
 
-void interpreter_follow(type_vm *tp,type_vmObj v) {
+void vm_gc_follow(type_vm *tp,type_vmObj v) {
     int type = v.type;
-    if (type == interpreter_LIST) {
+    if (type == vm_enum1_list) {
         int n;
         for (n=0; n<v.list.val->len; n++) {
-            interpreter_grey(tp,v.list.val->items[n]);
+            vm_gc_grey(tp,v.list.val->items[n]);
         }
     }
-    if (type == interpreter_DICT) {
+    if (type == vm_enum1_dict) {
         int i;
         for (i=0; i<v.dict.val->len; i++) {
-            int n = _interpreter_dict_next(tp,v.dict.val);
-            interpreter_grey(tp,v.dict.val->items[n].key);
-            interpreter_grey(tp,v.dict.val->items[n].val);
+            int n = vm_dict_next(tp,v.dict.val);
+            vm_gc_grey(tp,v.dict.val->items[n].key);
+            vm_gc_grey(tp,v.dict.val->items[n].val);
         }
-        interpreter_grey(tp,v.dict.val->meta); 
+        vm_gc_grey(tp,v.dict.val->meta); 
     }
-    if (type == interpreter_FNC) {
-        interpreter_grey(tp,v.fnc.info->self);
-        interpreter_grey(tp,v.fnc.info->globals);
-        interpreter_grey(tp,v.fnc.info->code);
+    if (type == vm_enum1_fnc) {
+        vm_gc_grey(tp,v.fnc.info->self);
+        vm_gc_grey(tp,v.fnc.info->globals);
+        vm_gc_grey(tp,v.fnc.info->code);
     }
 }
 
-void interpreter_reset(type_vm *tp) {
+void vm_gc_reset(type_vm *tp) {
     int n;
     type_vmList *tmp;
     for (n=0; n<tp->black->len; n++) {
@@ -43,86 +43,86 @@ void interpreter_reset(type_vm *tp) {
     tp->black = tmp;
 }
 
-void interpreter_gc_init(type_vm *tp) {
-    tp->white = _interpreter_list_new(tp);
-    tp->grey = _interpreter_list_new(tp);
-    tp->black = _interpreter_list_new(tp);
+void vm_gc_init(type_vm *tp) {
+    tp->white = vm_list_new(tp);
+    tp->grey = vm_list_new(tp);
+    tp->black = vm_list_new(tp);
     tp->steps = 0;
 }
 
-void interpreter_gc_deinit(type_vm *tp) {
-    _interpreter_list_free(tp, tp->white);
-    _interpreter_list_free(tp, tp->grey);
-    _interpreter_list_free(tp, tp->black);
+void vm_gc_deinit(type_vm *tp) {
+    vm_list_free(tp, tp->white);
+    vm_list_free(tp, tp->grey);
+    vm_list_free(tp, tp->black);
 }
 
-void interpreter_delete(type_vm *tp,type_vmObj v) {
+void vm_gc_delete(type_vm *tp,type_vmObj v) {
     int type = v.type;
-    if (type == interpreter_LIST) {
-        _interpreter_list_free(tp, v.list.val);
+    if (type == vm_enum1_list) {
+        vm_list_free(tp, v.list.val);
         return;
-    } else if (type == interpreter_DICT) {
-        _interpreter_dict_free(tp, v.dict.val);
+    } else if (type == vm_enum1_dict) {
+        vm_dict_free(tp, v.dict.val);
         return;
-    } else if (type == interpreter_STRING) {
+    } else if (type == vm_enum1_string) {
         free(v.string.info);
         return;
-    } else if (type == interpreter_DATA) {
+    } else if (type == vm_enum1_data) {
         if (v.data.info->free) {
             v.data.info->free(tp,v);
         }
         free(v.data.info);
         return;
-    } else if (type == interpreter_FNC) {
+    } else if (type == vm_enum1_fnc) {
         free(v.fnc.info);
         return;
     }
-    interpreter_raise(,interpreter_string("(interpreter_delete) TypeError: ?"));
+    vm_raise(tp,vm_string("(vm_gc_delete) TypeError: ?"));
 }
 
-void interpreter_collect(type_vm *tp) {
+void vm_gc_collect(type_vm *tp) {
     int n;
     for (n=0; n<tp->white->len; n++) {
         type_vmObj r = tp->white->items[n];
         if (*r.gci.data) { continue; }
-        interpreter_delete(tp,r);
+        vm_gc_delete(tp,r);
     }
     tp->white->len = 0;
-    interpreter_reset(tp);
+    vm_gc_reset(tp);
 }
 
-void _interpreter_gcinc(type_vm *tp) {
+void vm_gc_inc_sub(type_vm *tp) {
     type_vmObj v;
     if (!tp->grey->len) {
         return;
     }
-    v = _interpreter_list_pop(tp,tp->grey,tp->grey->len-1,"_interpreter_gcinc");
-    interpreter_follow(tp,v);
-    _interpreter_list_appendx(tp,tp->black,v);
+    v = vm_list_pop(tp,tp->grey,tp->grey->len-1,"vm_gc_inc_sub");
+    vm_gc_follow(tp,v);
+    vm_list_appendx(tp,tp->black,v);
 }
 
-void interpreter_full(type_vm *tp) {
+void vm_gc_full(type_vm *tp) {
     while (tp->grey->len) {
-        _interpreter_gcinc(tp);
+        vm_gc_inc_sub(tp);
     }
-    interpreter_collect(tp);
-    interpreter_follow(tp,tp->root);
+    vm_gc_collect(tp);
+    vm_gc_follow(tp,tp->root);
 }
 
-void interpreter_gcinc(type_vm *tp) {
+void vm_gc_inc(type_vm *tp) {
     tp->steps += 1;
-    if (tp->steps < vm_GCMAX || tp->grey->len > 0) {
-        _interpreter_gcinc(tp); _interpreter_gcinc(tp); 
+    if (tp->steps < vm_def_GCMAX || tp->grey->len > 0) {
+        vm_gc_inc_sub(tp); vm_gc_inc_sub(tp); 
     }
-    if (tp->steps < vm_GCMAX || tp->grey->len > 0) { return; }
+    if (tp->steps < vm_def_GCMAX || tp->grey->len > 0) { return; }
     tp->steps = 0;
-    interpreter_full(tp);
+    vm_gc_full(tp);
     return;
 }
 
-type_vmObj interpreter_track(type_vm *tp,type_vmObj v) {
-    interpreter_gcinc(tp);
-    interpreter_grey(tp,v);
+type_vmObj vm_gc_track(type_vm *tp,type_vmObj v) {
+    vm_gc_inc(tp);
+    vm_gc_grey(tp,v);
     return v;
 }
 

@@ -8,58 +8,58 @@ void math_init(type_vm *tp)
     /*
      * new a module dict for math
      */
-    type_vmObj math_mod = interpreter_dict(tp);
+    type_vmObj math_mod = vm_dict_create(tp);
 
     /*
      * initialize pi and e
      */
-    math_pi = interpreter_number(M_PI);
-    math_e  = interpreter_number(M_E);
+    math_pi = vm_create_numericObj(M_PI);
+    math_e  = vm_create_numericObj(M_E);
 
     /*
      * bind math functions to math module
      */
-    interpreter_set(tp, math_mod, interpreter_string("pi"), math_pi);
-    interpreter_set(tp, math_mod, interpreter_string("e"), math_e);
-    interpreter_set(tp, math_mod, interpreter_string("acos"), interpreter_fnc(tp, math_acos));
-    interpreter_set(tp, math_mod, interpreter_string("asin"), interpreter_fnc(tp, math_asin));
-    interpreter_set(tp, math_mod, interpreter_string("atan"), interpreter_fnc(tp, math_atan));
-    interpreter_set(tp, math_mod, interpreter_string("atan2"), interpreter_fnc(tp, math_atan2));
-    interpreter_set(tp, math_mod, interpreter_string("ceil"), interpreter_fnc(tp, math_ceil));
-    interpreter_set(tp, math_mod, interpreter_string("cos"), interpreter_fnc(tp, math_cos));
-    interpreter_set(tp, math_mod, interpreter_string("cosh"), interpreter_fnc(tp, math_cosh));
-    interpreter_set(tp, math_mod, interpreter_string("degrees"), interpreter_fnc(tp, math_degrees));
-    interpreter_set(tp, math_mod, interpreter_string("exp"), interpreter_fnc(tp, math_exp));
-    interpreter_set(tp, math_mod, interpreter_string("fabs"), interpreter_fnc(tp, math_fabs));
-    interpreter_set(tp, math_mod, interpreter_string("floor"), interpreter_fnc(tp, math_floor));
-    interpreter_set(tp, math_mod, interpreter_string("fmod"), interpreter_fnc(tp, math_fmod));
-    interpreter_set(tp, math_mod, interpreter_string("frexp"), interpreter_fnc(tp, math_frexp));
-    interpreter_set(tp, math_mod, interpreter_string("hypot"), interpreter_fnc(tp, math_hypot));
-    interpreter_set(tp, math_mod, interpreter_string("ldexp"), interpreter_fnc(tp, math_ldexp));
-    interpreter_set(tp, math_mod, interpreter_string("log"), interpreter_fnc(tp, math_log));
-    interpreter_set(tp, math_mod, interpreter_string("log10"), interpreter_fnc(tp, math_log10));
-    interpreter_set(tp, math_mod, interpreter_string("modf"), interpreter_fnc(tp, math_modf));
-    interpreter_set(tp, math_mod, interpreter_string("pow"), interpreter_fnc(tp, math_pow));
-    interpreter_set(tp, math_mod, interpreter_string("radians"), interpreter_fnc(tp, math_radians));
-    interpreter_set(tp, math_mod, interpreter_string("sin"), interpreter_fnc(tp, math_sin));
-    interpreter_set(tp, math_mod, interpreter_string("sinh"), interpreter_fnc(tp, math_sinh));
-    interpreter_set(tp, math_mod, interpreter_string("sqrt"), interpreter_fnc(tp, math_sqrt));
-    interpreter_set(tp, math_mod, interpreter_string("tan"), interpreter_fnc(tp, math_tan));
-    interpreter_set(tp, math_mod, interpreter_string("tanh"), interpreter_fnc(tp, math_tanh));
+    vm_operations_set(tp, math_mod, vm_string("pi"), math_pi);
+    vm_operations_set(tp, math_mod, vm_string("e"), math_e);
+    vm_operations_set(tp, math_mod, vm_string("acos"), vm_misc_fnc(tp, math_acos));
+    vm_operations_set(tp, math_mod, vm_string("asin"), vm_misc_fnc(tp, math_asin));
+    vm_operations_set(tp, math_mod, vm_string("atan"), vm_misc_fnc(tp, math_atan));
+    vm_operations_set(tp, math_mod, vm_string("atan2"), vm_misc_fnc(tp, math_atan2));
+    vm_operations_set(tp, math_mod, vm_string("ceil"), vm_misc_fnc(tp, math_ceil));
+    vm_operations_set(tp, math_mod, vm_string("cos"), vm_misc_fnc(tp, math_cos));
+    vm_operations_set(tp, math_mod, vm_string("cosh"), vm_misc_fnc(tp, math_cosh));
+    vm_operations_set(tp, math_mod, vm_string("degrees"), vm_misc_fnc(tp, math_degrees));
+    vm_operations_set(tp, math_mod, vm_string("exp"), vm_misc_fnc(tp, math_exp));
+    vm_operations_set(tp, math_mod, vm_string("fabs"), vm_misc_fnc(tp, math_fabs));
+    vm_operations_set(tp, math_mod, vm_string("floor"), vm_misc_fnc(tp, math_floor));
+    vm_operations_set(tp, math_mod, vm_string("fmod"), vm_misc_fnc(tp, math_fmod));
+    vm_operations_set(tp, math_mod, vm_string("frexp"), vm_misc_fnc(tp, math_frexp));
+    vm_operations_set(tp, math_mod, vm_string("hypot"), vm_misc_fnc(tp, math_hypot));
+    vm_operations_set(tp, math_mod, vm_string("ldexp"), vm_misc_fnc(tp, math_ldexp));
+    vm_operations_set(tp, math_mod, vm_string("log"), vm_misc_fnc(tp, math_log));
+    vm_operations_set(tp, math_mod, vm_string("log10"), vm_misc_fnc(tp, math_log10));
+    vm_operations_set(tp, math_mod, vm_string("modf"), vm_misc_fnc(tp, math_modf));
+    vm_operations_set(tp, math_mod, vm_string("pow"), vm_misc_fnc(tp, math_pow));
+    vm_operations_set(tp, math_mod, vm_string("radians"), vm_misc_fnc(tp, math_radians));
+    vm_operations_set(tp, math_mod, vm_string("sin"), vm_misc_fnc(tp, math_sin));
+    vm_operations_set(tp, math_mod, vm_string("sinh"), vm_misc_fnc(tp, math_sinh));
+    vm_operations_set(tp, math_mod, vm_string("sqrt"), vm_misc_fnc(tp, math_sqrt));
+    vm_operations_set(tp, math_mod, vm_string("tan"), vm_misc_fnc(tp, math_tan));
+    vm_operations_set(tp, math_mod, vm_string("tanh"), vm_misc_fnc(tp, math_tanh));
 
     /*
      * bind special attributes to math module
      */
-    interpreter_set(tp, math_mod, interpreter_string("__doc__"), 
-            interpreter_string(
+    vm_operations_set(tp, math_mod, vm_string("__doc__"), 
+            vm_string(
                 "This module is always available.  It provides access to the\n"
                 "mathematical functions defined by the C standard."));
-    interpreter_set(tp, math_mod, interpreter_string("__name__"), interpreter_string("math"));
-    interpreter_set(tp, math_mod, interpreter_string("__file__"), interpreter_string(__FILE__));
+    vm_operations_set(tp, math_mod, vm_string("__name__"), vm_string("math"));
+    vm_operations_set(tp, math_mod, vm_string("__file__"), vm_string(__FILE__));
 
     /*
      * bind to tiny modules[]
      */
-    interpreter_set(tp, tp->modules, interpreter_string("math"), math_mod);
+    vm_operations_set(tp, tp->modules, vm_string("math"), math_mod);
 }
 

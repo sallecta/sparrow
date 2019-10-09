@@ -7,7 +7,7 @@
 stage="sparrow"
 echo "start of stage: $stage"
 fn_dirEnsure "$dirbuild"
-cmdcompiler="gcc -std=c89 -Wall -Wc++-compat -O3 mymain.c  -lm -o $dirbuild/$exename"
+cmdcompiler="gcc -std=c89 -Wall -Wc++-compat -O3 main.c  -lm -o $dirbuild/$exename"
 cd $dirsrc
 #
 echo $cmdcompiler
