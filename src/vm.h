@@ -130,7 +130,7 @@ typedef struct type_vmDict {
     type_vmItem *items;
     int len;
     int alloc;
-    int cur;
+    int curFrame;
     int mask;
     int used;
     type_vmObj meta;
@@ -153,7 +153,7 @@ typedef union type_vmCode {
 typedef struct type_vmFrame {
 /*    type_vmCode *codes; */
     type_vmObj code;
-    type_vmCode *cur;
+    type_vmCode *curFrame;
     type_vmCode *jmp;
     type_vmObj *regs;
     type_vmObj *ret_dest;
@@ -186,7 +186,7 @@ typedef struct type_vmFrame {
  * modules - A dictionary with all loaded modules.
  * params - A list of parameters for the current function call.
  * frames - A list of all call frames.
- * cur - The index of the currently executing call frame.
+ * curFrame - The index of the currently executing call frame.
  * frames[n].globals - A dictionary of global sybmols in callframe n.
  */
 typedef struct type_vm {
@@ -202,7 +202,7 @@ typedef struct type_vm {
     int jmp;
     type_vmObj ex;
     char chars[256][2];
-    int cur;
+    int curFrame;
     /* gc */
     type_vmList *white;
     type_vmList *grey;
@@ -217,7 +217,7 @@ typedef struct type_vm {
     int mem_exceeded;
 } type_vm;
 
-/* #define TP type_vm *tp */
+
 
 typedef struct vm_type_data {
     int gci;
@@ -231,7 +231,7 @@ void vm_sandbox(type_vm *tp, double, unsigned long);
 void vm_time_update(type_vm *tp);
 void vm_mem_update(type_vm *tp);
 
-void vm_run(type_vm *tp,int cur);
+void vm_run(type_vm *tp,int curFrame);
 void vm_operations_set(type_vm *tp,type_vmObj,type_vmObj,type_vmObj);
 type_vmObj vm_operations_get(type_vm *tp,type_vmObj,type_vmObj);
 type_vmObj vm_operations_haskey(type_vm *tp,type_vmObj self, type_vmObj k);
@@ -247,7 +247,6 @@ void vm_gc_grey(type_vm *tp,type_vmObj);
 type_vmObj vm_call_sub(type_vm *tp, type_vmObj fnc, type_vmObj params);
 type_vmObj vm_operations_add(type_vm *tp,type_vmObj a, type_vmObj b) ;
 
-/* __func__ __VA_ARGS__ __FILE__ __LINE__ */
 
 
 /* Function: vm_string
@@ -272,12 +271,12 @@ vm_inline static type_vmObj vm_string(char const *v) {
 
 #define vm_def_CSTR_LEN 256
 
-vm_inline static void interpreter_cstr(type_vm *tp,type_vmObj v, char *s, int l) {
+vm_inline static void vm_cstr(type_vm *tp,type_vmObj v, char *s, int l) {
     if (v.type != vm_enum1_string) { 
-        vm_raise(tp,vm_string("(interpreter_cstr) TypeError: value not a string"));
+        vm_raise(tp,vm_string("(vm_cstr) TypeError: value not a string"));
     }
     if (v.string.len >= l) {
-        vm_raise(tp,vm_string("(interpreter_cstr) TypeError: value too long"));
+        vm_raise(tp,vm_string("(vm_cstr) TypeError: value too long"));
     }
     memset(s,0,l);
     memcpy(s,v.string.val,v.string.len);

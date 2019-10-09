@@ -90,8 +90,8 @@ type_vmObj vm_misc_dataObj(type_vm *tp,int magic,void *v) {
  */
 type_vmObj vm_misc_params(type_vm *tp) {
     type_vmObj r;
-    tp->params = tp->params_sub.list.val->items[tp->cur];
-    r = tp->params_sub.list.val->items[tp->cur];
+    tp->params = tp->params_sub.list.val->items[tp->curFrame];
+    r = tp->params_sub.list.val->items[tp->curFrame];
     r.list.val->len = 0;
     return r;
 }

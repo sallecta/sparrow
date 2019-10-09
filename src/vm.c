@@ -5,7 +5,7 @@
 #include "dict.c"
 #include "misc.c"
 #include "string.c"
-#include "builtins.c"
+#include "vm_api.c"
 #include "gc.c"
 #include "operations.c"
 
@@ -25,7 +25,7 @@ type_vm *sub_vm_init(void) {
     vm->mem_limit = vm_def_NO_LIMIT;
     vm->mem_exceeded = 0;
     vm->mem_used = sizeof(type_vm);
-    vm->cur = 0;
+    vm->curFrame = 0;
     vm->jmp = 0;
     vm->ex = vm_none;
     vm->root = vm_list_nt(vm);
@@ -80,10 +80,10 @@ void vm_frame(type_vm *tp,type_vmObj globals,type_vmObj code,type_vmObj *ret_des
     type_vmFrame f;
     f.globals = globals;
     f.code = code;
-    f.cur = (type_vmCode*)f.code.string.val;
+    f.curFrame = (type_vmCode*)f.code.string.val;
     f.jmp = 0;
-/*     fprintf(stderr,"tp->cur: %d\n",tp->cur);*/
-    f.regs = (tp->cur <= 0?tp->regs:tp->frames[tp->cur].regs+tp->frames[tp->cur].cregs);
+/*     fprintf(stderr,"tp->curFrame: %d\n",tp->curFrame);*/
+    f.regs = (tp->curFrame <= 0?tp->regs:tp->frames[tp->curFrame].regs+tp->frames[tp->curFrame].cregs);
 
     f.regs[0] = f.globals;
     f.regs[1] = f.code;
@@ -96,11 +96,11 @@ void vm_frame(type_vm *tp,type_vmObj globals,type_vmObj code,type_vmObj *ret_des
     f.fname = vm_string("?");
     f.cregs = 0;
 /*     return f;*/
-    if (f.regs+(256+vm_def_REGS_EXTRA) >= tp->regs+vm_def_REGS || tp->cur >= vm_def_FRAMES-1) {
+    if (f.regs+(256+vm_def_REGS_EXTRA) >= tp->regs+vm_def_REGS || tp->curFrame >= vm_def_FRAMES-1) {
         vm_raise(tp,vm_string("(vm_frame) RuntimeError: stack overflow"));
     }
-    tp->cur += 1;
-    tp->frames[tp->cur] = f;
+    tp->curFrame += 1;
+    tp->frames[tp->curFrame] = f;
 }
 
 void vm_raise(type_vm *tp,type_vmObj e) {
@@ -116,7 +116,7 @@ void vm_raise(type_vm *tp,type_vmObj e) {
 void vm_print_stack(type_vm *tp) {
     int i;
     printf("\n");
-    for (i=0; i<=tp->cur; i++) {
+    for (i=0; i<=tp->curFrame; i++) {
         if (!tp->frames[i].lineno) { continue; }
         printf("File \""); vm_echo(tp,tp->frames[i].fname); printf("\", ");
         printf("line %d, in ",tp->frames[i].lineno);
@@ -128,12 +128,12 @@ void vm_print_stack(type_vm *tp) {
 
 void vm_handle(type_vm *tp) {
     int i;
-    for (i=tp->cur; i>=0; i--) {
+    for (i=tp->curFrame; i>=0; i--) {
         if (tp->frames[i].jmp) { break; }
     }
     if (i >= 0) {
-        tp->cur = i;
-        tp->frames[i].cur = tp->frames[i].jmp;
+        tp->curFrame = i;
+        tp->frames[i].curFrame = tp->frames[i].jmp;
         tp->frames[i].jmp = 0;
         return;
     }
@@ -165,14 +165,14 @@ type_vmObj vm_call_sub(type_vm *tp,type_vmObj self, type_vmObj params) {
 
     if (self.type == vm_enum1_dict) {
         if (self.dict.dtype == 1) {
-            type_vmObj meta; if (vm_builtins_lookup(tp,self,vm_string("__new__"),&meta)) {
+            type_vmObj meta; if (vm_api_lookup(tp,self,vm_string("__new__"),&meta)) {
                 vm_list_insert(tp,params.list.val,0,self);
                 return vm_call_sub(tp,meta,params);
             }
         } else if (self.dict.dtype == 2) {
 			if (self.dict.dtype == 2) {
 					type_vmObj meta; 
-					if (vm_builtins_lookup(tp,self,vm_string("__call__"),&meta)) {
+					if (vm_api_lookup(tp,self,vm_string("__call__"),&meta)) {
 						return vm_call_sub(tp,meta,params);
 						}			
 			}
@@ -187,25 +187,25 @@ type_vmObj vm_call_sub(type_vm *tp,type_vmObj self, type_vmObj params) {
         type_vmObj dest = vm_none;
         vm_frame(tp,self.fnc.info->globals,self.fnc.info->code,&dest);
         if ((self.fnc.ftype&2)) {
-            tp->frames[tp->cur].regs[0] = params;
+            tp->frames[tp->curFrame].regs[0] = params;
             vm_list_insert(tp,params.list.val,0,self.fnc.info->self);
         } else {
-            tp->frames[tp->cur].regs[0] = params;
+            tp->frames[tp->curFrame].regs[0] = params;
         }
-        vm_run(tp,tp->cur);
+        vm_run(tp,tp->curFrame);
         return dest;
     }
-    vm_misc_params_v(tp,1,self); vm_builtins_print(tp);
+    vm_misc_params_v(tp,1,self); vm_api_io_print(tp);
     vm_raise(0,vm_string("(vm_call_sub) TypeError: object is not callable"));
 	return vm_none;
 }
 
 
 void vm_return(type_vm *tp, type_vmObj v) {
-    type_vmObj *dest = tp->frames[tp->cur].ret_dest;
+    type_vmObj *dest = tp->frames[tp->curFrame].ret_dest;
     if (dest) { *dest = v; vm_gc_grey(tp,v); }
-    memset(tp->frames[tp->cur].regs-vm_def_REGS_EXTRA,0,(vm_def_REGS_EXTRA+tp->frames[tp->cur].cregs)*sizeof(type_vmObj));
-    tp->cur -= 1;
+    memset(tp->frames[tp->curFrame].regs-vm_def_REGS_EXTRA,0,(vm_def_REGS_EXTRA+tp->frames[tp->curFrame].cregs)*sizeof(type_vmObj));
+    tp->curFrame -= 1;
 }
 
 
@@ -215,15 +215,15 @@ void vm_return(type_vm *tp, type_vmObj v) {
 #define vm_macro_UVBC (unsigned short)(((e.regs.b<<8)+e.regs.c))
 #define vm_macro_SVBC (short)(((e.regs.b<<8)+e.regs.c))
 #define vm_macro_GA vm_gc_grey(tp,regs[e.regs.a])
-#define vm_macro_SR(v) f->cur = cur; return(v);
+#define vm_macro_SR(v) f->curFrame = curFrame; return(v);
 
 
 int vm_step(type_vm *tp) {
-    type_vmFrame *f = &tp->frames[tp->cur];
+    type_vmFrame *f = &tp->frames[tp->curFrame];
     type_vmObj *regs = f->regs;
-    type_vmCode *cur = f->cur;
+    type_vmCode *curFrame = f->curFrame;
     while(1) {
-    type_vmCode e = *cur;
+    type_vmCode e = *curFrame;
     switch (e.i) {
         case vm_enum2_EOF: vm_return(tp,vm_none); vm_macro_SR(0); break;
         case vm_enum2_ADD: regs[e.regs.a] = vm_operations_add(tp,regs[e.regs.b],regs[e.regs.c]); break;
@@ -245,14 +245,14 @@ int vm_step(type_vm *tp) {
         case vm_enum2_BITNOT:  regs[e.regs.a] = vm_operations_bitwise_not(tp,regs[e.regs.b]); break;
         case vm_enum2_NOT: regs[e.regs.a] = vm_create_numericObj(!vm_operations_bool(tp,regs[e.regs.b])); break;
         case vm_enum2_PASS: break;
-        case vm_enum2_IF: if (vm_operations_bool(tp,regs[e.regs.a])) { cur += 1; } break;
-        case vm_enum2_IFN: if (!vm_operations_bool(tp,regs[e.regs.a])) { cur += 1; } break;
+        case vm_enum2_IF: if (vm_operations_bool(tp,regs[e.regs.a])) { curFrame += 1; } break;
+        case vm_enum2_IFN: if (!vm_operations_bool(tp,regs[e.regs.a])) { curFrame += 1; } break;
         case vm_enum2_GET: regs[e.regs.a] = vm_operations_get(tp,regs[e.regs.b],regs[e.regs.c]); vm_macro_GA; break;
         case vm_enum2_ITER:
             if (regs[e.regs.c].number.val < vm_operations_len(tp,regs[e.regs.b]).number.val) {
                 regs[e.regs.a] = vm_operations_iterate(tp,regs[e.regs.b],regs[e.regs.c]); vm_macro_GA;
                 regs[e.regs.c].number.val += 1;
-                cur += 1;
+                curFrame += 1;
             }
             break;
         case vm_enum2_HAS: regs[e.regs.a] = vm_operations_haskey(tp,regs[e.regs.b],regs[e.regs.c]); break;
@@ -261,24 +261,24 @@ int vm_step(type_vm *tp) {
         case vm_enum2_DEL: vm_operations_dict_key_del(tp,regs[e.regs.a],regs[e.regs.b]); break;
         case vm_enum2_MOVE: regs[e.regs.a] = regs[e.regs.b]; break;
         case vm_enum2_NUMBER:
-            regs[e.regs.a] = vm_create_numericObj(*(type_vmNum*)(*++cur).string.val);
-            cur += sizeof(type_vmNum)/4;
+            regs[e.regs.a] = vm_create_numericObj(*(type_vmNum*)(*++curFrame).string.val);
+            curFrame += sizeof(type_vmNum)/4;
             continue;
         case vm_enum2_STRING: {
-            /* regs[e.regs.a] = vm_string_n((*(cur+1)).string.val,vm_macro_UVBC); */
-            int a = (*(cur+1)).string.val-f->code.string.val;
+            /* regs[e.regs.a] = vm_string_n((*(curFrame+1)).string.val,vm_macro_UVBC); */
+            int a = (*(curFrame+1)).string.val-f->code.string.val;
             regs[e.regs.a] = vm_string_substring(tp,f->code,a,a+vm_macro_UVBC),
-            cur += (vm_macro_UVBC/4)+1;
+            curFrame += (vm_macro_UVBC/4)+1;
             }
             break;
         case vm_enum2_DICT: regs[e.regs.a] = interpreter_dict_n(tp,e.regs.c/2,&regs[e.regs.b]); break;
         case vm_enum2_LIST: regs[e.regs.a] = vm_list_n(tp,e.regs.c,&regs[e.regs.b]); break;
         case vm_enum2_PARAMS: regs[e.regs.a] = vm_misc_params_n(tp,e.regs.c,&regs[e.regs.b]); break;
         case vm_enum2_LEN: regs[e.regs.a] = vm_operations_len(tp,regs[e.regs.b]); break;
-        case vm_enum2_JUMP: cur += vm_macro_SVBC; continue; break;
-        case vm_enum2_SETJMP: f->jmp = vm_macro_SVBC?cur+vm_macro_SVBC:0; break;
+        case vm_enum2_JUMP: curFrame += vm_macro_SVBC; continue; break;
+        case vm_enum2_SETJMP: f->jmp = vm_macro_SVBC?curFrame+vm_macro_SVBC:0; break;
         case vm_enum2_CALL:
-            f->cur = cur + 1;  regs[e.regs.a] = vm_call_sub(tp,regs[e.regs.b],regs[e.regs.c]); vm_macro_GA;
+            f->curFrame = curFrame + 1;  regs[e.regs.a] = vm_call_sub(tp,regs[e.regs.b],regs[e.regs.c]); vm_macro_GA;
             return 0; break;
         case vm_enum2_GGET:
             if (!vm_operations_safeget(tp,&regs[e.regs.a],f->globals,regs[e.regs.b])) {
@@ -287,26 +287,26 @@ int vm_step(type_vm *tp) {
             break;
         case vm_enum2_GSET: vm_operations_set(tp,f->globals,regs[e.regs.a],regs[e.regs.b]); break;
         case vm_enum2_DEF: {
-            int a = (*(cur+1)).string.val-f->code.string.val;
+            int a = (*(curFrame+1)).string.val-f->code.string.val;
             regs[e.regs.a] = vm_misc_def(tp,
-                /*vm_string_n((*(cur+1)).string.val,(vm_macro_SVBC-1)*4),*/
+                /*vm_string_n((*(curFrame+1)).string.val,(vm_macro_SVBC-1)*4),*/
                 vm_string_substring(tp,f->code,a,a+(vm_macro_SVBC-1)*4),
                 f->globals);
-            cur += vm_macro_SVBC; continue;
+            curFrame += vm_macro_SVBC; continue;
             }
             break;
 
         case vm_enum2_RETURN: vm_return(tp,regs[e.regs.a]); vm_macro_SR(0); break;
         case vm_enum2_RAISE: vm_raise(tp,regs[e.regs.a]); vm_macro_SR(0); break;
         case vm_enum2_DEBUG:
-            vm_misc_params_v(tp,3,vm_string("DEBUG:"),vm_create_numericObj(e.regs.a),regs[e.regs.a]); vm_builtins_print(tp);
+            vm_misc_params_v(tp,3,vm_string("DEBUG:"),vm_create_numericObj(e.regs.a),regs[e.regs.a]); vm_api_io_print(tp);
             break;
         case vm_enum2_NONE: regs[e.regs.a] = vm_none; break;
         case vm_enum2_LINE:
             ;
-            int a = (*(cur+1)).string.val-f->code.string.val;
+            int a = (*(curFrame+1)).string.val-f->code.string.val;
             f->line = vm_string_substring(tp,f->code,a,a+e.regs.a*4-1);
-            cur += e.regs.a; f->lineno = vm_macro_UVBC;
+            curFrame += e.regs.a; f->lineno = vm_macro_UVBC;
             break;
         case vm_enum2_FILE: f->fname = regs[e.regs.a]; break;
         case vm_enum2_NAME: f->name = regs[e.regs.a]; break;
@@ -315,21 +315,21 @@ int vm_step(type_vm *tp) {
             vm_raise(0,vm_string("(vm_step) RuntimeError: invalid instruction"));
             break;
     }
-    cur += 1;
+    curFrame += 1;
     }
     vm_macro_SR(0);
 }
 
-void _vm_run(type_vm *tp,int cur) {
+void _vm_run(type_vm *tp,int curFrame) {
     tp->jmp += 1; if (setjmp(tp->buf)) { vm_handle(tp); }
-    while (tp->cur >= cur && vm_step(tp) != -1);
+    while (tp->curFrame >= curFrame && vm_step(tp) != -1);
     tp->jmp -= 1;
 }
 
-void vm_run(type_vm *tp,int cur) {
+void vm_run(type_vm *tp,int curFrame) {
     jmp_buf tmp;
     memcpy(tmp,tp->buf,sizeof(jmp_buf));
-    _vm_run(tp,cur);
+    _vm_run(tp,curFrame);
     memcpy(tp->buf,tmp,sizeof(jmp_buf));
 }
 
@@ -350,7 +350,7 @@ type_vmObj vm_import_sub(type_vm *tp, type_vmObj fname, type_vmObj name, type_vm
 
     if (code.type == vm_enum1_none) {
         vm_misc_params_v(tp,1,fname);
-        code = vm_builtins_load(tp);
+        code = vm_api_load(tp);
     }
 
     g = vm_dict_create(tp);
@@ -360,7 +360,7 @@ type_vmObj vm_import_sub(type_vm *tp, type_vmObj fname, type_vmObj name, type_vm
     vm_frame(tp,g,code,0);
     vm_operations_set(tp,tp->modules,name,g);
 
-    if (!tp->jmp) { vm_run(tp,tp->cur); }
+    if (!tp->jmp) { vm_run(tp,tp->curFrame); }
 
     return g;
 }
@@ -391,7 +391,7 @@ type_vmObj vm_exec_sub(type_vm *tp) {
     type_vmObj globals = vm_operations_get(tp,tp->params,vm_none);
     type_vmObj r = vm_none;
     vm_frame(tp,globals,code,&r);
-    vm_run(tp,tp->cur);
+    vm_run(tp,tp->curFrame);
     return r;
 }
 
@@ -411,26 +411,26 @@ type_vmObj vm_import(type_vm *tp) {
 void vm_regbuiltins(type_vm *tp) {
     type_vmObj o;
     struct {const char *s;void *f;} b[] = {
-    {"print",vm_builtins_print}, {"range",vm_builtins_range}, {"min",vm_builtins_min},
-    {"max",vm_builtins_max}, {"bind",vm_builtins_bind}, {"copy",vm_builtins_copy},
-    {"import",vm_import}, {"len",vm_builtins_len}, {"assert",vm_builtins_assert},
-    {"str",vm_string_str2}, {"float",vm_builtins_float}, {"system",vm_builtins_system},
-    {"istype",vm_builtins_istype}, {"chr",vm_string_chr}, {"save",vm_builtins_save},
-    {"load",vm_builtins_load}, {"fpack",vm_builtins_fpack}, {"abs",vm_builtins_abs},
-    {"int",vm_builtins_int}, {"exec",vm_exec_sub}, {"exists",vm_builtins_exists},
-    {"mtime",vm_builtins_mtime}, {"number",vm_builtins_float}, {"round",vm_builtins_round},
-    {"ord",vm_string_ord}, {"merge",vm_dict_merge}, {"getraw",vm_builtins_getraw},
-    {"setmeta",vm_builtins_setmeta}, {"getmeta",vm_builtins_getmeta},
-    {"bool", vm_builtins_bool},
+    {"print",vm_api_io_print}, {"range",vm_api_math_range}, {"min",vm_api_stat_min},
+    {"max",vm_api_stat_max}, {"bind",vm_api_bind}, {"copy",vm_api_copy},
+    {"import",vm_import}, {"len",vm_api_string_len}, {"assert",vm_api_assert},
+    {"str",vm_string_str2}, {"float",vm_api_type_float}, {"system",vm_api_system},
+    {"istype",vm_api_istype}, {"chr",vm_string_chr}, {"save",vm_api_save},
+    {"load",vm_api_load}, {"fpack",vm_api_fpack}, {"abs",vm_api_math_abs},
+    {"int",vm_api_type_int}, {"exec",vm_exec_sub}, {"exists",vm_api_exists},
+    {"mtime",vm_api_mtime}, {"number",vm_api_type_float}, {"round",vm_api_math_round},
+    {"ord",vm_string_ord}, {"merge",vm_dict_merge}, {"getraw",vm_api_getraw},
+    {"setmeta",vm_api_setmeta}, {"getmeta",vm_api_getmeta},
+    {"bool", vm_api_type_bool},
     {0,0},
     };
     int i; for(i=0; b[i].s; i++) {
         vm_operations_set(tp,tp->builtins,vm_string(b[i].s),vm_misc_fnc(tp,(type_vmObj (*)(type_vm *))b[i].f));
     }
 
-    o = vm_builtins_object(tp);
-    vm_operations_set(tp,o,vm_string("__call__"),vm_misc_fnc(tp,vm_builtins_object_call));
-    vm_operations_set(tp,o,vm_string("__new__"),vm_misc_fnc(tp,vm_builtins_object_new));
+    o = vm_api_object(tp);
+    vm_operations_set(tp,o,vm_string("__call__"),vm_misc_fnc(tp,vm_api_object_call));
+    vm_operations_set(tp,o,vm_string("__new__"),vm_misc_fnc(tp,vm_api_object_new));
     vm_operations_set(tp,tp->builtins,vm_string("object"),o);
 }
 
@@ -460,7 +460,7 @@ type_vmObj interpreter_compile(type_vm *tp, type_vmObj text, type_vmObj fname) {
 type_vmObj interpreter_exec(type_vm *tp, type_vmObj code, type_vmObj globals) {
     type_vmObj r=vm_none;
     vm_frame(tp,globals,code,&r);
-    vm_run(tp,tp->cur);
+    vm_run(tp,tp->curFrame);
     return r;
 }
 

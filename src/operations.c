@@ -131,11 +131,11 @@ type_vmObj vm_operations_get(type_vm *tp,type_vmObj self, type_vmObj k) {
     if (type == vm_enum1_dict) {
 			if (self.dict.dtype == 2) {
 					type_vmObj meta; 
-					if (vm_builtins_lookup(tp,self,vm_string("__get__"),&meta)) {
+					if (vm_api_lookup(tp,self,vm_string("__get__"),&meta)) {
 						return vm_call_sub(tp,meta,vm_misc_params_v(tp,1,k));
 						}			
 			}
-        if (self.dict.dtype && vm_builtins_lookup(tp,self,k,&r)) { return r; }
+        if (self.dict.dtype && vm_api_lookup(tp,self,k,&r)) { return r; }
         return vm_dict_get(tp,self.dict.val,k,"vm_operations_get");
     } else if (type == vm_enum1_list) {
         if (k.type == vm_enum1_number) {
@@ -156,7 +156,7 @@ type_vmObj vm_operations_get(type_vm *tp,type_vmObj self, type_vmObj k) {
                 return vm_misc_method(tp,self,vm_list_extend);
             } else if (vm_operations_cmp(tp,vm_string("*"),k) == 0) {
                 vm_misc_params_v(tp,1,self);
-                r = vm_builtins_copy(tp);
+                r = vm_api_copy(tp);
                 self.list.val->len=0;
                 return r;
             }
@@ -240,7 +240,7 @@ void vm_operations_set(type_vm *tp,type_vmObj self, type_vmObj k, type_vmObj v) 
     if (type == vm_enum1_dict) {
 			if (self.dict.dtype == 2) {
 					type_vmObj meta; 
-					if (vm_builtins_lookup(tp,self,vm_string("__set__"),&meta)) {
+					if (vm_api_lookup(tp,self,vm_string("__set__"),&meta)) {
 						vm_call_sub(tp,meta,vm_misc_params_v(tp,2,k,v));
 						return;
 						}			
@@ -276,7 +276,7 @@ type_vmObj vm_operations_add(type_vm *tp,type_vmObj a, type_vmObj b) {
     } else if (a.type == vm_enum1_list && a.type == b.type) {
         type_vmObj r;
         vm_misc_params_v(tp,1,a);
-        r = vm_builtins_copy(tp);
+        r = vm_api_copy(tp);
         vm_misc_params_v(tp,2,r,b);
         vm_list_extend(tp);
         return r;

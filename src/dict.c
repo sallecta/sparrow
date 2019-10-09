@@ -139,9 +139,9 @@ int vm_dict_next(type_vm *tp,type_vmDict *self) {
         vm_raise(0,vm_string("(vm_dict_next) RuntimeError"));
     }
     while (1) {
-        self->cur = ((self->cur + 1) & self->mask);
-        if (self->items[self->cur].used > 0) {
-            return self->cur;
+        self->curFrame = ((self->curFrame + 1) & self->mask);
+        if (self->items[self->curFrame].used > 0) {
+            return self->curFrame;
         }
     }
 
@@ -162,7 +162,7 @@ type_vmObj vm_dict_merge(type_vm *tp) {
  *
  * Creates a new dictionary object.
  *
- * *Note* If you use <vm_builtins_setmeta> on the dictionary, you have to use <vm_builtins_getraw> to
+ * *Note* If you use <vm_api_setmeta> on the dictionary, you have to use <vm_api_getraw> to
  * access the "raw" dictionary again.
  *
  * Returns:
